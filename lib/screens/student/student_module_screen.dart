@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import 'student_grades_screen.dart';
 import '../../models/attendance.dart';
 import '../../models/semester_registration.dart';
+import '../../models/quiz_question_model.dart';
+import '../../models/quiz_submission_model.dart';
 import '../../models/student_dashboard_data.dart';
 import '../../providers/auth_provider.dart';
 import 'semester_registration_screen.dart';
@@ -1492,6 +1495,236 @@ class _TaskFeatureCard extends StatelessWidget {
   }
 }
 
+class _QuizCard extends StatelessWidget {
+  final QuizDashboardItem quiz;
+  final QuizSubmissionModel? submission;
+  final VoidCallback onStart;
+
+  const _QuizCard({
+    required this.quiz,
+    required this.submission,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final end = DateFormat('dd MMM, hh:mm a').format(quiz.endTime);
+    return _SurfaceCard(
+      accentColor: AppColors.primaryDark,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.quiz_outlined, color: AppColors.primaryDark),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  quiz.quiz.title,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${quiz.courseCode} | ${quiz.courseTitle}',
+            style: const TextStyle(color: AppColors.ink500),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${quiz.questionCount} questions | ${quiz.quiz.totalMarks} marks | Ends $end',
+            style: const TextStyle(color: AppColors.ink700),
+          ),
+          const SizedBox(height: 6),
+          if (submission != null)
+            Text(
+              'Result: ${submission!.score}/${quiz.quiz.totalMarks}',
+              style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+            ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton(
+              onPressed: onStart,
+              child: Text(submission == null ? 'Start Quiz' : 'View Result'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MaterialDownloadCard extends StatelessWidget {
+  final StudyMaterialDashboardItem material;
+
+  const _MaterialDownloadCard({required this.material});
+
+  @override
+  Widget build(BuildContext context) {
+    final uploaded = DateFormat('dd MMM, hh:mm a').format(material.uploadedAt);
+    return _SurfaceCard(
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primaryDark),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  material.material.fileName,
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${material.courseCode} | ${material.courseTitle}',
+                  style: const TextStyle(color: AppColors.ink500, fontSize: 12),
+                ),
+                const SizedBox(height: 3),
+                Text('Uploaded $uploaded', style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+              ],
+            ),
+          ),
+          const Icon(Icons.open_in_new, color: AppColors.ink300),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuizAttemptScreen extends StatefulWidget {
+  final QuizDashboardItem quiz;
+
+  const _QuizAttemptScreen({required this.quiz});
+
+  @override
+  State<_QuizAttemptScreen> createState() => _QuizAttemptScreenState();
+}
+
+class _QuizAttemptScreenState extends State<_QuizAttemptScreen> {
+  final StudentDashboardService _service = StudentDashboardService.instance;
+  final Map<String, String> _answers = {};
+  bool _submitting = false;
+
+  Future<void> _submitQuiz(List<QuizQuestionModel> questions) async {
+    final auth = context.read<AuthProvider>();
+    final user = auth.currentUser;
+    if (user == null) return;
+
+    setState(() => _submitting = true);
+    try {
+      await _service.submitQuizAttempt(
+        quizId: widget.quiz.quiz.id,
+        studentId: user.id,
+        answers: _answers,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    final correctCount = questions.where((q) => _answers[q.id]?.trim().toLowerCase() == q.correctAnswer.trim().toLowerCase()).length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Quiz submitted. Score saved. Correct answers: $correctCount/${questions.length}')),
+    );
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.quiz.quiz.title),
+      ),
+      body: FutureBuilder<List<QuizQuestionModel>>(
+        future: _service.fetchQuizQuestions(widget.quiz.quiz.id),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text(snapshot.error.toString(), textAlign: TextAlign.center));
+          }
+          final questions = snapshot.data ?? [];
+          if (questions.isEmpty) {
+            return const Center(child: Text('No quiz questions found.'));
+          }
+
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              _SurfaceCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.quiz.courseTitle, style: const TextStyle(color: AppColors.ink500)),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${widget.quiz.questionCount} questions | ${widget.quiz.quiz.totalMarks} marks',
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...questions.asMap().entries.map(
+                (entry) {
+                  final question = entry.value;
+                  final options = question.options ?? const <String>[];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _SurfaceCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Q${entry.key + 1}. ${question.questionText}',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                          ),
+                          const SizedBox(height: 12),
+                          ...options.map(
+                            (option) => RadioListTile<String>(
+                              value: option,
+                              groupValue: _answers[question.id],
+                              onChanged: (value) => setState(() => _answers[question.id] = value ?? ''),
+                              title: Text(option),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: _submitting ? null : () => _submitQuiz(questions),
+                icon: const Icon(Icons.check_circle_outline),
+                label: Text(_submitting ? 'Submitting...' : 'Submit Quiz'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _AnnouncementCard extends StatelessWidget {
   final DashboardNotificationItem notification;
 
@@ -1506,6 +1739,8 @@ class _AnnouncementCard extends StatelessWidget {
     switch (notification.notification.type.toLowerCase()) {
       case 'assignment':
         return '/student/dashboard?tab=tasks';
+      case 'material':
+        return '/student/dashboard?tab=courses';
       case 'registration':
       case 'announcement':
       case 'general':
@@ -1598,6 +1833,8 @@ IconData _notificationIcon(String type) {
   switch (type.toLowerCase()) {
     case 'assignment':
       return Icons.assignment_outlined;
+    case 'material':
+      return Icons.description_outlined;
     case 'attendance':
       return Icons.check_circle_outline;
     case 'quiz':
@@ -1650,6 +1887,15 @@ class _CoursesTab extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openMaterial(BuildContext context, StudyMaterialDashboardItem material) async {
+    final uri = Uri.tryParse(material.material.fileUrl);
+    if (uri == null || !await canLaunchUrl(uri)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open this material.')));
+      return;
+    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -1768,6 +2014,26 @@ class _CoursesTab extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        const _SectionHeader(
+          eyebrow: 'STUDY MATERIALS',
+          title: 'Uploaded Study Materials',
+          subtitle: 'Open files uploaded by your faculty directly from the app.',
+        ),
+        const SizedBox(height: 12),
+        if (data.studyMaterials.isEmpty)
+          const _EmptyState(message: 'No study materials have been uploaded yet.')
+        else
+          ...data.studyMaterials.map(
+            (material) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () => _openMaterial(context, material),
+                child: _MaterialDownloadCard(material: material),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -1997,10 +2263,59 @@ class _TasksTab extends StatelessWidget {
 
   const _TasksTab({required this.data});
 
+  QuizSubmissionModel? _submissionForQuiz(String quizId) {
+    for (final submission in data.quizSubmissions) {
+      if (submission.quizId == quizId) return submission;
+    }
+    return null;
+  }
+
+  Future<void> _openQuiz(BuildContext context, QuizDashboardItem quiz) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _QuizAttemptScreen(quiz: quiz),
+      ),
+    );
+  }
+
+  Future<void> _showQuizResult(BuildContext context, QuizDashboardItem quiz, QuizSubmissionModel submission) async {
+    final totalMarks = quiz.quiz.totalMarks;
+    final percentage = totalMarks <= 0 ? 0.0 : (submission.score / totalMarks) * 100;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(quiz.quiz.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('${quiz.courseCode} | ${quiz.courseTitle}', style: const TextStyle(color: AppColors.ink500)),
+            const SizedBox(height: 14),
+            _SurfaceCard(
+              child: Column(
+                children: [
+                  _InfoRow(label: 'Score', value: '${submission.score}/$totalMarks'),
+                  _InfoRow(label: 'Percentage', value: '${percentage.toStringAsFixed(0)}%'),
+                  _InfoRow(label: 'Submitted At', value: DateFormat('dd MMM, hh:mm a').format(submission.submittedAt.toDate())),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('You have already submitted this quiz.', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final sorted = [...data.pendingTasks]..sort((a, b) => a.dueDate.compareTo(b.dueDate));
     final featured = sorted.isNotEmpty ? sorted.first : null;
+    final quizzes = [...data.quizzes]..sort((a, b) => a.endTime.compareTo(b.endTime));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -2026,6 +2341,31 @@ class _TasksTab extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: _TaskFeatureCard(task: task),
             ),
+          ),
+        const SizedBox(height: 8),
+        const _SectionHeader(
+          eyebrow: 'QUIZZES',
+          title: 'Available Quizzes',
+          subtitle: 'Take active quizzes directly from your account.',
+        ),
+        const SizedBox(height: 12),
+        if (quizzes.isEmpty)
+          const _EmptyState(message: 'No quizzes are active right now.')
+        else
+          ...quizzes.map(
+            (quiz) {
+              final submission = _submissionForQuiz(quiz.quiz.id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _QuizCard(
+                  quiz: quiz,
+                  submission: submission,
+                  onStart: submission == null
+                      ? () => _openQuiz(context, quiz)
+                      : () => _showQuizResult(context, quiz, submission),
+                ),
+              );
+            },
           ),
         const SizedBox(height: 12),
         _SurfaceCard(
@@ -2077,7 +2417,14 @@ class _NotificationsTabState extends State<_NotificationsTab> {
       final matchesQuery = query.isEmpty ||
           item.notification.title.toLowerCase().contains(query) ||
           item.notification.body.toLowerCase().contains(query);
-      final matchesFilter = _filter == 'all' || item.notification.type.toLowerCase() == _filter;
+      final type = item.notification.type.toLowerCase();
+      final matchesFilter = switch (_filter) {
+        'all' => true,
+        'academic' => type == 'announcement' || type == 'assignment' || type == 'quiz' || type == 'material',
+        'assignment' => type == 'assignment',
+        'general' => type == 'general' || type == 'announcement',
+        _ => type == _filter,
+      };
       return matchesQuery && matchesFilter;
     }).toList();
 

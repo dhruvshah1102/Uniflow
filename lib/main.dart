@@ -44,7 +44,7 @@ void main() async {
 }
 
 class UniflowApp extends StatefulWidget {
-  const UniflowApp({Key? key}) : super(key: key);
+  const UniflowApp({super.key});
 
   @override
   State<UniflowApp> createState() => _UniflowAppState();

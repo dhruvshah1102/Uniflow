@@ -2,6 +2,9 @@ import '../models/attendance.dart';
 import '../models/assignment.dart';
 import '../models/course.dart';
 import '../models/notification.dart';
+import '../models/quiz_model.dart';
+import '../models/quiz_submission_model.dart';
+import '../models/study_material.dart';
 import '../models/semester_registration.dart';
 import '../models/student_model.dart';
 import '../models/user_model.dart';
@@ -14,6 +17,9 @@ class StudentDashboardData {
   final List<CourseDashboardItem> currentCourses;
   final List<UpcomingCourseDashboardItem> upcomingCourses;
   final List<DashboardTaskItem> pendingTasks;
+  final List<QuizDashboardItem> quizzes;
+  final List<QuizSubmissionModel> quizSubmissions;
+  final List<StudyMaterialDashboardItem> studyMaterials;
   final List<DashboardNotificationItem> notifications;
   final DateTime? nextDeadline;
   final SemesterRegistrationRecord? nextSemesterRegistration;
@@ -26,6 +32,9 @@ class StudentDashboardData {
     required this.currentCourses,
     required this.upcomingCourses,
     required this.pendingTasks,
+    required this.quizzes,
+    required this.quizSubmissions,
+    required this.studyMaterials,
     required this.notifications,
     required this.nextDeadline,
     required this.nextSemesterRegistration,
@@ -70,6 +79,9 @@ class StudentDashboardData {
       'currentCourses': currentCourses.map((item) => item.toMap()).toList(),
       'upcomingCourses': upcomingCourses.map((item) => item.toMap()).toList(),
       'pendingTasks': pendingTasks.map((item) => item.toMap()).toList(),
+      'quizzes': quizzes.map((item) => item.toMap()).toList(),
+      'quizSubmissions': quizSubmissions.map((item) => item.toMap()).toList(),
+      'studyMaterials': studyMaterials.map((item) => item.toMap()).toList(),
       'notifications': notifications.map((item) => item.toMap()).toList(),
       'attendanceBreakdown': currentCourses
           .map(
@@ -203,6 +215,77 @@ class DashboardNotificationItem {
       'type': notification.type,
       'read': notification.read,
       'createdAt': createdAt.toIso8601String(),
+    };
+  }
+}
+
+class QuizDashboardItem {
+  final QuizModel quiz;
+  final String courseCode;
+  final String courseTitle;
+  final int questionCount;
+
+  const QuizDashboardItem({
+    required this.quiz,
+    required this.courseCode,
+    required this.courseTitle,
+    required this.questionCount,
+  });
+
+  DateTime get startTime => quiz.startTime.toDate();
+  DateTime get endTime => quiz.endTime.toDate();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'quizId': quiz.id,
+      'courseId': quiz.courseId,
+      'courseCode': courseCode,
+      'courseTitle': courseTitle,
+      'title': quiz.title,
+      'totalMarks': quiz.totalMarks,
+      'questionCount': questionCount,
+      'startTime': startTime.toIso8601String(),
+      'endTime': endTime.toIso8601String(),
+    };
+  }
+}
+
+class QuizResultSummary {
+  final QuizSubmissionModel submission;
+  final int totalMarks;
+
+  const QuizResultSummary({
+    required this.submission,
+    required this.totalMarks,
+  });
+
+  double get percentage =>
+      totalMarks <= 0 ? 0 : (submission.score / totalMarks) * 100;
+}
+
+class StudyMaterialDashboardItem {
+  final StudyMaterialModel material;
+  final String courseCode;
+  final String courseTitle;
+
+  const StudyMaterialDashboardItem({
+    required this.material,
+    required this.courseCode,
+    required this.courseTitle,
+  });
+
+  DateTime get uploadedAt => material.uploadedAt.toDate();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'materialId': material.id,
+      'courseId': material.courseId,
+      'courseCode': courseCode,
+      'courseTitle': courseTitle,
+      'fileName': material.fileName,
+      'fileUrl': material.fileUrl,
+      'uploadedBy': material.uploadedBy,
+      'uploadedAt': uploadedAt.toIso8601String(),
     };
   }
 }

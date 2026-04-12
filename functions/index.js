@@ -23,6 +23,16 @@ exports.onAssignmentCreated = onDocumentCreated('assignments/{assignmentId}', as
   if (!assignment) return;
 
   const assignmentId = event.params.assignmentId;
+  const mirroredNoticeSnap = await db
+    .collection('notifications')
+    .where('sourceId', '==', assignmentId)
+    .limit(1)
+    .get();
+  if (!mirroredNoticeSnap.empty) {
+    const mirroredNotice = mirroredNoticeSnap.docs[0].data() || {};
+    if ((mirroredNotice.sourceCollection || '').toString() === 'assignments') return;
+  }
+
   const courseId = (assignment.courseId || '').toString().trim();
   if (!courseId) return;
 

@@ -1,4 +1,3 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/academic_result.dart';
 import '../../models/course.dart';
+import '../../models/quiz_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/faculty_module_service.dart';
 
@@ -17,6 +17,43 @@ enum _FacultyTab {
   assignments,
   notifications,
   profile,
+}
+
+enum _ComposerMode { assignment, quiz }
+
+class _QuizQuestionDraft {
+  final TextEditingController questionCtrl = TextEditingController();
+  final TextEditingController optionACtrl = TextEditingController();
+  final TextEditingController optionBCtrl = TextEditingController();
+  final TextEditingController optionCCtrl = TextEditingController();
+  final TextEditingController optionDCtrl = TextEditingController();
+  final TextEditingController answerCtrl = TextEditingController();
+  final TextEditingController marksCtrl = TextEditingController(text: '1');
+
+  void dispose() {
+    questionCtrl.dispose();
+    optionACtrl.dispose();
+    optionBCtrl.dispose();
+    optionCCtrl.dispose();
+    optionDCtrl.dispose();
+    answerCtrl.dispose();
+    marksCtrl.dispose();
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'questionText': questionCtrl.text.trim(),
+      'type': 'mcq',
+      'options': [
+        optionACtrl.text.trim(),
+        optionBCtrl.text.trim(),
+        optionCCtrl.text.trim(),
+        optionDCtrl.text.trim(),
+      ].where((item) => item.isNotEmpty).toList(),
+      'correctAnswer': answerCtrl.text.trim(),
+      'marks': int.tryParse(marksCtrl.text.trim()) ?? 1,
+    };
+  }
 }
 
 _FacultyTab _facultyTabFromQuery(String? tab) {
@@ -178,6 +215,8 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 courses: [],
                 studentCountByCourse: {},
                 assignments: [],
+                quizzes: [],
+                materials: [],
                 announcements: [],
                 pendingTasks: 0,
               );
@@ -1049,8 +1088,12 @@ class _FacultyAssignmentsTab extends StatefulWidget {
 
 class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
   String? _courseId;
+  _ComposerMode _mode = _ComposerMode.assignment;
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _quizDurationCtrl = TextEditingController(text: '15');
+  final _quizMarksCtrl = TextEditingController(text: '10');
+  final List<_QuizQuestionDraft> _quizQuestions = [_QuizQuestionDraft()];
   DateTime _dueDate = DateTime.now().add(const Duration(days: 7));
   bool _saving = false;
 
@@ -1058,6 +1101,11 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
+    _quizDurationCtrl.dispose();
+    _quizMarksCtrl.dispose();
+    for (final question in _quizQuestions) {
+      question.dispose();
+    }
     super.dispose();
   }
 
@@ -1079,20 +1127,127 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment created and students notified.')));
   }
 
-  Future<void> _uploadMaterial() async {
-    if (_courseId == null) return;
-    final result = await FilePicker.pickFiles(withData: true);
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
-    await widget.service.uploadMaterial(
+  Future<void> _createQuiz() async {
+    if (_courseId == null || _titleCtrl.text.trim().isEmpty) return;
+    final questions = _quizQuestions
+        .map((question) => question.toMap())
+        .where((question) => (question['questionText'] as String).isNotEmpty)
+        .toList();
+    if (questions.isEmpty) return;
+
+    setState(() => _saving = true);
+    await widget.service.createQuiz(
       facultyId: widget.facultyId,
       courseId: _courseId!,
-      fileName: file.name,
-      filePath: file.path,
-      bytes: file.bytes,
+      title: _titleCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
+      durationMinutes: int.tryParse(_quizDurationCtrl.text.trim()) ?? 15,
+      totalMarks: int.tryParse(_quizMarksCtrl.text.trim()) ?? questions.fold<int>(0, (sum, q) => sum + ((q['marks'] as num?)?.toInt() ?? 1)),
+      questions: questions,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Study material uploaded successfully.')));
+    _titleCtrl.clear();
+    _descCtrl.clear();
+    _quizDurationCtrl.text = '15';
+    _quizMarksCtrl.text = '10';
+    for (final question in _quizQuestions) {
+      question.dispose();
+    }
+    _quizQuestions
+      ..clear()
+      ..add(_QuizQuestionDraft());
+    await widget.onRefreshParent();
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quiz created and students notified.')));
+  }
+
+  Future<void> _showQuizScores(QuizModel quiz) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        minChildSize: 0.45,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return FutureBuilder<List<QuizAttemptSummary>>(
+            future: widget.service.fetchQuizAttempts(quiz.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text(snapshot.error.toString(), textAlign: TextAlign.center));
+              }
+              final attempts = snapshot.data ?? [];
+              return ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                children: [
+                  Text(quiz.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 6),
+                  Text('${attempts.length} student submissions', style: const TextStyle(color: AppColors.ink500)),
+                  const SizedBox(height: 14),
+                  if (attempts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: Text('No one has submitted this quiz yet.')),
+                    )
+                  else
+                    ...attempts.map(
+                      (attempt) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _GlassCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(attempt.studentName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                              const SizedBox(height: 4),
+                              Text(attempt.studentEmail.isEmpty ? attempt.submission.studentId : attempt.studentEmail, style: const TextStyle(color: AppColors.ink500)),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Score: ${attempt.submission.score}/${attempt.totalMarks} (${attempt.percentage.toStringAsFixed(0)}%)',
+                                style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Submitted: ${DateFormat('dd MMM, hh:mm a').format(attempt.submission.submittedAt.toDate())}',
+                                style: const TextStyle(color: AppColors.ink500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _uploadMaterial() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Study material upload is coming soon.')),
+    );
+  }
+
+  void _addQuizQuestion() {
+    setState(() {
+      _quizQuestions.add(_QuizQuestionDraft());
+    });
+  }
+
+  void _removeQuizQuestion(int index) {
+    if (_quizQuestions.length <= 1) return;
+    setState(() {
+      _quizQuestions[index].dispose();
+      _quizQuestions.removeAt(index);
+    });
   }
 
   @override
@@ -1120,32 +1275,31 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
           style: TextStyle(color: AppColors.ink700, height: 1.35),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.filter_list_outlined),
-                label: const Text('Filter'),
-              ),
+        SegmentedButton<_ComposerMode>(
+          segments: const [
+            ButtonSegment(
+              value: _ComposerMode.assignment,
+              label: Text('Assignment'),
+              icon: Icon(Icons.assignment_outlined),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: _saving ? null : _createAssignment,
-                icon: const Icon(Icons.add),
-                label: Text(_saving ? 'Saving...' : 'Create New'),
-              ),
+            ButtonSegment(
+              value: _ComposerMode.quiz,
+              label: Text('Quiz'),
+              icon: Icon(Icons.quiz_outlined),
             ),
           ],
+          selected: {_mode},
+          onSelectionChanged: (value) => setState(() => _mode = value.first),
         ),
         const SizedBox(height: 12),
         _GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Create Assignment / Quiz', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: AppColors.primaryDark)),
+              Text(
+                _mode == _ComposerMode.assignment ? 'Create Assignment' : 'Create Quiz',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: AppColors.primaryDark),
+              ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _courseId,
@@ -1182,34 +1336,94 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
               const SizedBox(height: 12),
               TextField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
               const SizedBox(height: 12),
+              if (_mode == _ComposerMode.assignment)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime(2100),
+                        initialDate: _dueDate,
+                      );
+                      if (picked != null) {
+                        setState(() => _dueDate = picked);
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      alignment: Alignment.center,
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.event_outlined),
+                          const SizedBox(width: 8),
+                          Text('Due: ${DateFormat('dd MMM yyyy').format(_dueDate)}'),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _quizDurationCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Duration (minutes)'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _quizMarksCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Total marks'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ..._quizQuestions.asMap().entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _QuizQuestionCard(
+                      index: entry.key,
+                      draft: entry.value,
+                      onRemove: () => _removeQuizQuestion(entry.key),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _addQuizQuestion,
+                    icon: const Icon(Icons.add_circle_outline),
+                    label: const Text('Add Question'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime(2100),
-                      initialDate: _dueDate,
-                    );
-                    if (picked != null) {
-                      setState(() => _dueDate = picked);
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    alignment: Alignment.center,
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.event_outlined),
-                        const SizedBox(width: 8),
-                        Text('Due: ${DateFormat('dd MMM yyyy').format(_dueDate)}'),
-                      ],
-                    ),
+                child: ElevatedButton.icon(
+                  onPressed: _saving
+                      ? null
+                      : _mode == _ComposerMode.assignment
+                          ? _createAssignment
+                          : _createQuiz,
+                  icon: const Icon(Icons.add),
+                  label: Text(
+                    _saving
+                        ? 'Saving...'
+                        : _mode == _ComposerMode.assignment
+                            ? 'Create Assignment'
+                            : 'Create Quiz',
                   ),
                 ),
               ),
@@ -1268,6 +1482,40 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
           ),
         const Divider(),
         const SizedBox(height: 8),
+        const Text('Active Quizzes', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 38, color: AppColors.primaryDark)),
+        const SizedBox(height: 12),
+        if (widget.data.quizzes.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text('No quizzes created yet.', style: TextStyle(color: AppColors.ink500)),
+          )
+        else
+          ...widget.data.quizzes.map(
+            (quiz) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: () => _showQuizScores(quiz),
+                child: _GlassCard(
+                  accent: AppColors.primaryDark,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(quiz.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                      const SizedBox(height: 6),
+                      Text('Course: ${quiz.courseId}', style: const TextStyle(color: AppColors.ink700)),
+                      const SizedBox(height: 6),
+                      Text('Total marks: ${quiz.totalMarks}', style: const TextStyle(color: AppColors.ink700)),
+                      const SizedBox(height: 10),
+                      const Text('Tap to view student scores', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        const Divider(),
+        const SizedBox(height: 8),
         Row(
           children: [
             const Expanded(
@@ -1279,36 +1527,133 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
             TextButton.icon(
               onPressed: _uploadMaterial,
               icon: const Icon(Icons.upload_file_outlined, size: 16),
-              label: const Text('UPLOAD'),
+              label: const Text('ADD LINK'),
             ),
           ],
         ),
         const SizedBox(height: 12),
         _GlassCard(
           child: Column(
+            children: widget.data.materials.isEmpty
+                ? [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text('No study materials uploaded yet.', style: TextStyle(color: AppColors.ink500)),
+                    ),
+                  ]
+                : [
+                    ...widget.data.materials.map(
+                      (material) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _MaterialTile(
+                          fileName: material.fileName,
+                          meta: '${material.courseId} • ${DateFormat('dd MMM, yyyy').format(material.uploadedAt.toDate())}',
+                          isLink: true,
+                        ),
+                      ),
+                    ),
+                  ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuizQuestionCard extends StatelessWidget {
+  final int index;
+  final _QuizQuestionDraft draft;
+  final VoidCallback onRemove;
+
+  const _QuizQuestionCard({
+    required this.index,
+    required this.draft,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _MaterialTile(fileName: 'Lecture_08_Transformers.pdf', meta: '2.4 MB • 15 Oct, 2024'),
-              const SizedBox(height: 10),
-              _MaterialTile(fileName: 'CNN_Architecture_Guide.pdf', meta: '1.8 MB • 12 Oct, 2024'),
-              const SizedBox(height: 10),
-              _MaterialTile(fileName: 'Research_Datasets_Index.url', meta: '420 KB • 10 Oct, 2024', isLink: true),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryDark,
-                  borderRadius: BorderRadius.circular(14),
+              Text(
+                'Question ${index + 1}',
+                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+              ),
+              const Spacer(),
+              if (index > 0)
+                IconButton(
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.delete_outline, color: AppColors.danger),
                 ),
-                child: const Text(
-                  'AI Curation Suggestion\nConsider organizing these files into a new module for Week 12.',
-                  style: TextStyle(color: Colors.white, height: 1.35),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: draft.questionCtrl,
+            decoration: const InputDecoration(labelText: 'Question text'),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: draft.optionACtrl,
+                  decoration: const InputDecoration(labelText: 'Option A'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: draft.optionBCtrl,
+                  decoration: const InputDecoration(labelText: 'Option B'),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: draft.optionCCtrl,
+                  decoration: const InputDecoration(labelText: 'Option C'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: draft.optionDCtrl,
+                  decoration: const InputDecoration(labelText: 'Option D'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: draft.answerCtrl,
+                  decoration: const InputDecoration(labelText: 'Correct answer text'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 100,
+                child: TextField(
+                  controller: draft.marksCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Marks'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

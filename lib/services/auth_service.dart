@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/academic_result.dart';
@@ -85,8 +86,8 @@ class AuthService {
         );
       }
     } catch (e) {
-      print('Error fetching user data: $e');
-      throw e;
+      debugPrint('Error fetching user data: $e');
+      rethrow;
     }
     return null;
   }
@@ -803,8 +804,8 @@ class AuthService {
         return {'id': snapshot.docs.first.id, ...snapshot.docs.first.data()};
       }
     } catch (e) {
-      print('Error fetching role profile: $e');
-      throw e;
+      debugPrint('Error fetching role profile: $e');
+      rethrow;
     }
     return null;
   }

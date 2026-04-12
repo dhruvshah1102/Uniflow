@@ -6,6 +6,10 @@ import '../models/attendance.dart';
 import '../models/assignment.dart';
 import '../models/course.dart';
 import '../models/notification.dart';
+import '../models/quiz_model.dart';
+import '../models/quiz_question_model.dart';
+import '../models/quiz_submission_model.dart';
+import '../models/study_material.dart';
 import '../models/semester_registration.dart';
 import '../models/student_dashboard_data.dart';
 import '../models/student_model.dart';
@@ -58,7 +62,13 @@ class StudentDashboardService {
 
     final attendanceRecords = await _fetchAttendance(candidateIds, currentCourseIds);
     final assignments = await _fetchAssignments(currentCourseIds);
-    final notifications = await _fetchNotifications(candidateIds);
+    final quizzes = await _fetchQuizzes(currentCourseIds, courseById);
+    final quizSubmissions = await _fetchQuizSubmissions(candidateIds);
+    final studyMaterials = await _fetchStudyMaterials(allCourseIds, courseById);
+    final notifications = await _fetchNotifications(
+      candidateIds: candidateIds,
+      courseIds: allCourseIds,
+    );
     final nextSemesterRegistration = await _fetchNextSemesterRegistration(
       candidateIds: candidateIds,
       currentSemester: studentProfile?.semester,
@@ -143,6 +153,9 @@ class StudentDashboardService {
       currentCourses: currentCourseSummaries,
       upcomingCourses: upcomingCourseSummaries,
       pendingTasks: pendingTasks,
+      quizzes: quizzes,
+      quizSubmissions: quizSubmissions,
+      studyMaterials: studyMaterials,
       notifications: notifications
           .map((notification) => DashboardNotificationItem(notification: notification))
           .toList(),
@@ -204,6 +217,20 @@ class StudentDashboardService {
             .listen((_) => emitSnapshot());
         courseSubscriptions.add(assignmentSub);
 
+        final quizSub = _db
+            .collection('quizzes')
+            .where('course_id', whereIn: batch)
+            .snapshots()
+            .listen((_) => emitSnapshot());
+        courseSubscriptions.add(quizSub);
+
+        final materialSub = _db
+            .collection('materials')
+            .where('courseId', whereIn: batch)
+            .snapshots()
+            .listen((_) => emitSnapshot());
+        courseSubscriptions.add(materialSub);
+
         final courseSub = _db
             .collection('courses')
             .where(FieldPath.documentId, whereIn: batch)
@@ -248,6 +275,20 @@ class StudentDashboardService {
             fixedSubscriptions.add(enrollmentSub);
           }
 
+          final userNoticeSub = _db
+              .collection('notifications')
+              .where('userId', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot());
+          fixedSubscriptions.add(userNoticeSub);
+
+          final sharedNoticeSub = _db
+              .collection('notifications')
+              .where('targetUserIds', arrayContainsAny: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot());
+          fixedSubscriptions.add(sharedNoticeSub);
+
           final attendanceSub = _db
               .collection('attendance')
               .where('studentId', whereIn: batch)
@@ -255,21 +296,39 @@ class StudentDashboardService {
               .listen((_) => emitSnapshot());
           fixedSubscriptions.add(attendanceSub);
 
-          final notificationSub = _db
-              .collection('notifications')
-              .where('userId', whereIn: batch)
-              .snapshots()
-              .listen((_) => emitSnapshot());
-          fixedSubscriptions.add(notificationSub);
-
           final registrationSub = _db
               .collection('registrations')
               .where('studentId', whereIn: batch)
               .snapshots()
               .listen((_) => emitSnapshot());
           fixedSubscriptions.add(registrationSub);
+
+          final quizSubmissionSub = _db
+              .collection('quiz_submissions')
+              .where('student_id', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot());
+          fixedSubscriptions.add(quizSubmissionSub);
         }
       }
+
+      if (currentCourseIds.isNotEmpty) {
+        for (final batch in _chunk(currentCourseIds.toList(), 10)) {
+          final courseNoticeSub = _db
+              .collection('notifications')
+              .where('courseId', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot());
+          fixedSubscriptions.add(courseNoticeSub);
+        }
+      }
+
+      final globalNoticeSub = _db
+          .collection('notifications')
+          .where('audience', isEqualTo: 'all')
+          .snapshots()
+          .listen((_) => emitSnapshot());
+      fixedSubscriptions.add(globalNoticeSub);
     }
 
     controller.onListen = () {
@@ -392,22 +451,172 @@ class StudentDashboardService {
     return results;
   }
 
-  Future<List<NotificationModel>> _fetchNotifications(List<String> candidateIds) async {
-    if (candidateIds.isEmpty) {
-      return [];
+  Future<List<QuizDashboardItem>> _fetchQuizzes(
+    List<String> courseIds,
+    Map<String, CourseModel> courseById,
+  ) async {
+    if (courseIds.isEmpty) return [];
+
+    final quizzes = <QuizModel>[];
+    for (final batch in _chunk(courseIds, 10)) {
+      final snap = await _db.collection('quizzes').where('course_id', whereIn: batch).get();
+      quizzes.addAll(snap.docs.map((doc) => QuizModel.fromMap(doc.data(), doc.id)));
+    }
+    quizzes.sort((a, b) => a.endTime.compareTo(b.endTime));
+
+    final quizIds = quizzes.map((quiz) => quiz.id).toList();
+    final questionCounts = await _fetchQuizQuestionCounts(quizIds);
+
+    return quizzes.map((quiz) {
+      final course = courseById[quiz.courseId];
+      return QuizDashboardItem(
+        quiz: quiz,
+        courseCode: course?.code ?? quiz.courseId,
+        courseTitle: course?.title ?? quiz.courseId,
+        questionCount: questionCounts[quiz.id] ?? 0,
+      );
+    }).toList();
+  }
+
+  Future<List<QuizSubmissionModel>> _fetchQuizSubmissions(List<String> candidateIds) async {
+    if (candidateIds.isEmpty) return [];
+
+    final results = <QuizSubmissionModel>[];
+    for (final batch in _chunk(candidateIds, 10)) {
+      final snap = await _db.collection('quiz_submissions').where('student_id', whereIn: batch).get();
+      results.addAll(snap.docs.map((doc) => QuizSubmissionModel.fromMap(doc.data(), doc.id)));
+    }
+    results.sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+    return results;
+  }
+
+  Future<Map<String, int>> _fetchQuizQuestionCounts(List<String> quizIds) async {
+    if (quizIds.isEmpty) return {};
+
+    final counts = <String, int>{};
+    for (final batch in _chunk(quizIds, 10)) {
+      final snap = await _db.collection('quiz_questions').where('quiz_id', whereIn: batch).get();
+      for (final doc in snap.docs) {
+        final quizId = (doc.data()['quiz_id'] ?? '').toString();
+        if (quizId.isEmpty) continue;
+        counts[quizId] = (counts[quizId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  Future<List<StudyMaterialDashboardItem>> _fetchStudyMaterials(
+    List<String> courseIds,
+    Map<String, CourseModel> courseById,
+  ) async {
+    if (courseIds.isEmpty) return [];
+
+    final materials = <StudyMaterialModel>[];
+    for (final batch in _chunk(courseIds, 10)) {
+      final snap = await _db.collection('materials').where('courseId', whereIn: batch).get();
+      materials.addAll(snap.docs.map((doc) => StudyMaterialModel.fromMap(doc.data(), doc.id)));
+    }
+    materials.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+
+    return materials.map((material) {
+      final course = courseById[material.courseId];
+      return StudyMaterialDashboardItem(
+        material: material,
+        courseCode: course?.code ?? material.courseId,
+        courseTitle: course?.title ?? material.courseId,
+      );
+    }).toList();
+  }
+
+  Future<QuizModel?> fetchQuizById(String quizId) async {
+    final doc = await _db.collection('quizzes').doc(quizId).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return QuizModel.fromMap(doc.data()!, doc.id);
+  }
+
+  Future<QuizSubmissionModel?> fetchQuizSubmissionForStudent({
+    required String quizId,
+    required String studentId,
+  }) async {
+    final doc = await _db.collection('quiz_submissions').doc('${quizId}_$studentId').get();
+    if (!doc.exists || doc.data() == null) return null;
+    return QuizSubmissionModel.fromMap(doc.data()!, doc.id);
+  }
+
+  Future<List<QuizQuestionModel>> fetchQuizQuestions(String quizId) async {
+    final snap = await _db.collection('quiz_questions').where('quiz_id', isEqualTo: quizId).get();
+    final questions = snap.docs.map((doc) => QuizQuestionModel.fromMap(doc.data(), doc.id)).toList();
+    questions.sort((a, b) => a.id.compareTo(b.id));
+    return questions;
+  }
+
+  Future<void> submitQuizAttempt({
+    required String quizId,
+    required String studentId,
+    required Map<String, String> answers,
+  }) async {
+    final existing = await fetchQuizSubmissionForStudent(quizId: quizId, studentId: studentId);
+    if (existing != null) {
+      throw Exception('You have already submitted this quiz.');
     }
 
-    final results = <NotificationModel>[];
-    for (final batch in _chunk(candidateIds, 10)) {
-      final snap = await _db
-          .collection('notifications')
-          .where('userId', whereIn: batch)
-          .get();
-      results.addAll(
-        snap.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)),
-      );
+    final quiz = await fetchQuizById(quizId);
+    if (quiz == null) {
+      throw Exception('Quiz not found.');
     }
-    results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final questions = await fetchQuizQuestions(quizId);
+    var score = 0;
+    for (final question in questions) {
+      final answer = (answers[question.id] ?? '').trim().toLowerCase();
+      final correct = question.correctAnswer.trim().toLowerCase();
+      if (answer.isNotEmpty && answer == correct) {
+        score += question.marks;
+      }
+    }
+
+    await _db.collection('quiz_submissions').doc('${quizId}_$studentId').set(
+      {
+        'quiz_id': quizId,
+        'student_id': studentId,
+        'answers': answers,
+        'score': score,
+        'total_marks': quiz.totalMarks,
+        'submitted_at': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  Future<List<NotificationModel>> _fetchNotifications({
+    required List<String> candidateIds,
+    required List<String> courseIds,
+  }) async {
+    final resultsByKey = <String, NotificationModel>{};
+
+    Future<void> addQuery(Future<QuerySnapshot<Map<String, dynamic>>> Function() run) async {
+      final snap = await run();
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final notification = NotificationModel.fromMap(data, doc.id);
+        final key = _notificationDedupKey(data);
+        resultsByKey[key] = notification;
+      }
+    }
+
+    for (final batch in _chunk(candidateIds, 10)) {
+      await addQuery(() => _db.collection('notifications').where('userId', whereIn: batch).get());
+      await addQuery(() => _db.collection('notifications').where('targetUserIds', arrayContainsAny: batch).get());
+    }
+
+    for (final batch in _chunk(courseIds, 10)) {
+      await addQuery(() => _db.collection('notifications').where('courseId', whereIn: batch).get());
+    }
+
+    await addQuery(() => _db.collection('notifications').where('audience', isEqualTo: 'all').get());
+
+    final results = resultsByKey.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return results;
   }
 
@@ -448,9 +657,27 @@ class StudentDashboardService {
 
   List<String> _uniqueIds(Iterable<String?> ids) {
     return ids
-        .where((id) => id != null && id!.trim().isNotEmpty)
+        .where((id) => id != null && id.trim().isNotEmpty)
         .map((id) => id!.trim())
         .toSet()
         .toList();
+  }
+
+  String _notificationDedupKey(Map<String, dynamic> data) {
+    final sourceId = (data['sourceId'] ?? '').toString().trim();
+    if (sourceId.isNotEmpty) {
+      final sourceCollection = (data['sourceCollection'] ?? '').toString().trim();
+      if (sourceCollection.isNotEmpty) {
+        return '$sourceCollection|$sourceId';
+      }
+      return sourceId;
+    }
+
+    final type = (data['type'] ?? '').toString().trim().toLowerCase();
+    final courseId = (data['courseId'] ?? '').toString().trim().toLowerCase();
+    final title = (data['title'] ?? '').toString().trim().toLowerCase();
+    final body = (data['body'] ?? data['message'] ?? '').toString().trim().toLowerCase();
+    final audience = (data['audience'] ?? '').toString().trim().toLowerCase();
+    return '$type|$courseId|$audience|$title|$body';
   }
 }

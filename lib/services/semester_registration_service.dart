@@ -121,7 +121,7 @@ class SemesterRegistrationService {
     final totalCredits = [
       ...selected,
       ...backlog,
-    ].fold<int>(0, (sum, course) => sum + course.credits);
+    ].fold<int>(0, (total, course) => total + course.credits);
     if (totalCredits > creditLimit) {
       throw Exception('Selected credits exceed the maximum limit of $creditLimit.');
     }

@@ -1,19 +1,20 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/assignment.dart';
 import '../models/course.dart';
 import '../models/academic_result.dart';
 import '../models/notification.dart';
+import '../models/quiz_model.dart';
+import '../models/quiz_submission_model.dart';
+import '../models/study_material.dart';
 
 class FacultyDashboardData {
   final List<CourseModel> courses;
   final Map<String, int> studentCountByCourse;
   final List<AssignmentModel> assignments;
+  final List<QuizModel> quizzes;
+  final List<StudyMaterialModel> materials;
   final List<NotificationModel> announcements;
   final int pendingTasks;
 
@@ -21,6 +22,8 @@ class FacultyDashboardData {
     required this.courses,
     required this.studentCountByCourse,
     required this.assignments,
+    required this.quizzes,
+    required this.materials,
     required this.announcements,
     required this.pendingTasks,
   });
@@ -38,12 +41,27 @@ class CourseStudent {
   });
 }
 
+class QuizAttemptSummary {
+  final QuizSubmissionModel submission;
+  final String studentName;
+  final String studentEmail;
+  final int totalMarks;
+
+  const QuizAttemptSummary({
+    required this.submission,
+    required this.studentName,
+    required this.studentEmail,
+    required this.totalMarks,
+  });
+
+  double get percentage => totalMarks <= 0 ? 0 : (submission.score / totalMarks) * 100;
+}
+
 class FacultyModuleService {
   FacultyModuleService._();
   static final FacultyModuleService instance = FacultyModuleService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<FacultyDashboardData> loadDashboard({
     required String firebaseUid,
@@ -54,6 +72,8 @@ class FacultyModuleService {
     final courseIds = courses.map((course) => course.courseId).toList();
     final enrollments = await _fetchEnrollments(courseIds);
     final assignments = await _fetchAssignments(courseIds);
+    final quizzes = await _fetchQuizzes(courseIds);
+    final materials = await _fetchMaterials(courseIds);
     final announcements = await _fetchAnnouncements(firebaseUid, userDocId);
 
     final studentsByCourse = <String, Set<String>>{};
@@ -80,6 +100,8 @@ class FacultyModuleService {
       courses: courses,
       studentCountByCourse: studentCountByCourse,
       assignments: assignments,
+      quizzes: quizzes,
+      materials: materials,
       announcements: announcements,
       pendingTasks: dueSoonCount + courses.length,
     );
@@ -133,6 +155,12 @@ class FacultyModuleService {
         );
         courseSubscriptions.add(
           _db.collection('assignments').where('courseId', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+        );
+        courseSubscriptions.add(
+          _db.collection('quizzes').where('course_id', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+        );
+        courseSubscriptions.add(
+          _db.collection('materials').where('courseId', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
         );
         courseSubscriptions.add(
           _db.collection('enrollments').where('courseId', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
@@ -210,6 +238,55 @@ class FacultyModuleService {
       results.addAll(snap.docs.map((doc) => AssignmentModel.fromMap(doc.data(), doc.id)));
     }
     return results;
+  }
+
+  Future<List<QuizModel>> _fetchQuizzes(List<String> courseIds) async {
+    if (courseIds.isEmpty) return [];
+    final results = <QuizModel>[];
+    for (final batch in _chunk(courseIds, 10)) {
+      final snap = await _db.collection('quizzes').where('course_id', whereIn: batch).get();
+      results.addAll(snap.docs.map((doc) => QuizModel.fromMap(doc.data(), doc.id)));
+    }
+    results.sort((a, b) => a.endTime.compareTo(b.endTime));
+    return results;
+  }
+
+  Future<List<StudyMaterialModel>> _fetchMaterials(List<String> courseIds) async {
+    if (courseIds.isEmpty) return [];
+    final results = <StudyMaterialModel>[];
+    for (final batch in _chunk(courseIds, 10)) {
+      final snap = await _db.collection('materials').where('courseId', whereIn: batch).get();
+      results.addAll(snap.docs.map((doc) => StudyMaterialModel.fromMap(doc.data(), doc.id)));
+    }
+    results.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+    return results;
+  }
+
+  Future<List<QuizAttemptSummary>> fetchQuizAttempts(String quizId) async {
+    final quizDoc = await _db.collection('quizzes').doc(quizId).get();
+    final quizData = quizDoc.data() ?? <String, dynamic>{};
+    final totalMarks = (quizData['total_marks'] as num?)?.toInt() ?? 0;
+
+    final snap = await _db.collection('quiz_submissions').where('quiz_id', isEqualTo: quizId).get();
+    final submissions = snap.docs.map((doc) => QuizSubmissionModel.fromMap(doc.data(), doc.id)).toList()
+      ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+
+    final attempts = <QuizAttemptSummary>[];
+    for (final submission in submissions) {
+      final doc = await _db.collection('users').doc(submission.studentId).get();
+      final data = doc.data() ?? <String, dynamic>{};
+      final name = (data['name'] ?? submission.studentId).toString();
+      final email = (data['email'] ?? '').toString();
+      attempts.add(
+        QuizAttemptSummary(
+          submission: submission,
+          studentName: name,
+          studentEmail: email,
+          totalMarks: totalMarks,
+        ),
+      );
+    }
+    return attempts;
   }
 
   Future<List<NotificationModel>> _fetchAnnouncements(String firebaseUid, String userDocId) async {
@@ -309,8 +386,11 @@ class FacultyModuleService {
     required String description,
     required DateTime dueDate,
   }) async {
-    final ref = _db.collection('assignments').doc();
-    await ref.set({
+    final assignmentRef = _db.collection('assignments').doc();
+    final noticeRef = _db.collection('notifications').doc();
+    final batch = _db.batch();
+
+    batch.set(assignmentRef, {
       'courseId': courseId,
       'title': title,
       'description': description,
@@ -319,51 +399,86 @@ class FacultyModuleService {
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
-  }
 
-  Future<String> uploadMaterial({
-    required String facultyId,
-    required String courseId,
-    required String fileName,
-    String? filePath,
-    Uint8List? bytes,
-  }) async {
-    final sanitized = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-    final storageRef = _storage
-        .ref()
-        .child('materials')
-        .child(courseId)
-        .child('${DateTime.now().millisecondsSinceEpoch}_$sanitized');
-
-    UploadTask task;
-    if (bytes != null) {
-      task = storageRef.putData(bytes);
-    } else if (filePath != null && filePath.isNotEmpty) {
-      task = storageRef.putFile(File(filePath));
-    } else {
-      throw Exception('File data is missing for upload.');
-    }
-
-    final snapshot = await task;
-    final downloadUrl = await snapshot.ref.getDownloadURL();
-
-    await _db.collection('materials').add({
+    batch.set(noticeRef, {
+      'title': 'New Assignment',
+      'body': title,
+      'message': title,
+      'type': 'assignment',
+      'audience': 'course',
       'courseId': courseId,
-      'fileUrl': downloadUrl,
-      'fileName': fileName,
-      'uploadedBy': facultyId,
-      'uploadedAt': FieldValue.serverTimestamp(),
+      'route': '/student/dashboard?tab=tasks',
+      'sourceId': assignmentRef.id,
+      'sourceCollection': 'assignments',
+      'createdBy': facultyId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'read': false,
     });
 
-    await _notifyCourseStudents(
-      facultyId: facultyId,
-      courseId: courseId,
-      title: 'New Study Material Uploaded',
-      body: fileName,
-      type: 'material',
-    );
+    await batch.commit();
+  }
 
-    return downloadUrl;
+  Future<void> createQuiz({
+    required String facultyId,
+    required String courseId,
+    required String title,
+    required String description,
+    required int durationMinutes,
+    required int totalMarks,
+    required List<Map<String, dynamic>> questions,
+  }) async {
+    if (questions.isEmpty) {
+      throw Exception('Add at least one quiz question.');
+    }
+
+    final quizRef = _db.collection('quizzes').doc();
+    final noticeRef = _db.collection('notifications').doc();
+    final endTime = DateTime.now().add(Duration(minutes: durationMinutes <= 0 ? 15 : durationMinutes));
+    final batch = _db.batch();
+
+    batch.set(quizRef, {
+      'course_id': courseId,
+      'faculty_id': facultyId,
+      'title': title,
+      'description': description,
+      'start_time': Timestamp.now(),
+      'end_time': Timestamp.fromDate(endTime),
+      'total_marks': totalMarks,
+      'question_count': questions.length,
+      'status': 'published',
+      'created_at': FieldValue.serverTimestamp(),
+    });
+
+    batch.set(noticeRef, {
+      'title': 'New Quiz',
+      'body': title,
+      'message': description.isNotEmpty ? description : title,
+      'type': 'quiz',
+      'audience': 'course',
+      'courseId': courseId,
+      'route': '/student/dashboard?tab=tasks',
+      'sourceId': quizRef.id,
+      'sourceCollection': 'quizzes',
+      'createdBy': facultyId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'read': false,
+    });
+
+    for (var i = 0; i < questions.length; i++) {
+      final question = questions[i];
+      final questionRef = _db.collection('quiz_questions').doc();
+      batch.set(questionRef, {
+        'quiz_id': quizRef.id,
+        'question_text': (question['questionText'] ?? '').toString(),
+        'type': (question['type'] ?? 'mcq').toString(),
+        'options': question['options'],
+        'correct_answer': (question['correctAnswer'] ?? '').toString(),
+        'marks': (question['marks'] as num?)?.toInt() ?? 1,
+        'order': i,
+      });
+    }
+
+    await batch.commit();
   }
 
   Future<void> sendAnnouncement({
@@ -385,12 +500,14 @@ class FacultyModuleService {
       'message': message,
       'type': 'announcement',
       'audience': audience,
+      'route': '/student/dashboard?tab=notifications',
+      'sourceId': doc.id,
+      'sourceCollection': 'notifications',
       if (courseId != null && courseId.trim().isNotEmpty) 'courseId': courseId.trim(),
       if (userIds != null && userIds.isNotEmpty)
         'targetUserIds': userIds.where((id) => id.trim().isNotEmpty).map((id) => id.trim()).toList(),
       'createdBy': facultyId,
       'createdAt': FieldValue.serverTimestamp(),
-      'deliveryCopy': false,
       'read': false,
     });
   }
@@ -433,37 +550,9 @@ class FacultyModuleService {
     await batch.commit();
   }
 
-  Future<void> _notifyCourseStudents({
-    required String facultyId,
-    required String courseId,
-    required String title,
-    required String body,
-    required String type,
-  }) async {
-    final students = await fetchStudentsForCourse(courseId);
-    if (students.isEmpty) return;
-
-    final batch = _db.batch();
-    for (final student in students) {
-      final doc = _db.collection('notifications').doc();
-      batch.set(doc, {
-        'userId': student.studentId,
-        'courseId': courseId,
-        'title': title,
-        'body': body,
-        'message': body,
-        'type': type,
-        'read': false,
-        'createdBy': facultyId,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    }
-    await batch.commit();
-  }
-
   List<String> _uniqueIds(List<String?> values) {
     return values
-        .where((value) => value != null && value!.trim().isNotEmpty)
+        .where((value) => value != null && value.trim().isNotEmpty)
         .map((value) => value!.trim())
         .toSet()
         .toList();
@@ -476,4 +565,5 @@ class FacultyModuleService {
     }
     return output;
   }
+
 }

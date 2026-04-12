@@ -137,17 +137,17 @@ int gradePointForGrade(String grade) {
 
 double calculateSgpa(List<AcademicResultItem> results) {
   if (results.isEmpty) return 0;
-  final totalCredits = results.fold<int>(0, (sum, item) => sum + item.credits);
+  final totalCredits = results.fold<int>(0, (total, item) => total + item.credits);
   if (totalCredits == 0) return 0;
-  final weighted = results.fold<double>(0, (sum, item) => sum + item.weightedScore);
+  final weighted = results.fold<double>(0, (total, item) => total + item.weightedScore);
   return weighted / totalCredits;
 }
 
 double calculateCgpa(List<AcademicResultItem> results) {
   if (results.isEmpty) return 0;
-  final totalCredits = results.fold<int>(0, (sum, item) => sum + item.credits);
+  final totalCredits = results.fold<int>(0, (total, item) => total + item.credits);
   if (totalCredits == 0) return 0;
-  final weighted = results.fold<double>(0, (sum, item) => sum + item.weightedScore);
+  final weighted = results.fold<double>(0, (total, item) => total + item.weightedScore);
   return weighted / totalCredits;
 }
 
@@ -179,7 +179,7 @@ StudentAcademicRecord buildAcademicRecord({
       .toList()
     ..sort((a, b) => a.semester.compareTo(b.semester));
 
-  final completedCredits = sorted.fold<int>(0, (sum, item) => sum + item.credits);
+  final completedCredits = sorted.fold<int>(0, (total, item) => total + item.credits);
   final cgpa = calculateCgpa(sorted);
 
   return StudentAcademicRecord(
