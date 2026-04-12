@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../models/academic_result.dart';
@@ -131,7 +135,9 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
     if (auth.currentUser?.role != 'faculty') {
       return Scaffold(
         appBar: AppBar(title: const Text('Access denied')),
-        body: const Center(child: Text('Only faculty accounts can access this module.')),
+        body: const Center(
+          child: Text('Only faculty accounts can access this module.'),
+        ),
       );
     }
 
@@ -179,7 +185,10 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(onPressed: _reload, icon: const Icon(Icons.notifications_none_outlined)),
+          IconButton(
+            onPressed: _reload,
+            icon: const Icon(Icons.notifications_none_outlined),
+          ),
           IconButton(
             onPressed: () => auth.logout(),
             icon: const Icon(Icons.logout_outlined),
@@ -199,18 +208,29 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline, color: AppColors.danger, size: 52),
+                    const Icon(
+                      Icons.error_outline,
+                      color: AppColors.danger,
+                      size: 52,
+                    ),
                     const SizedBox(height: 12),
-                    Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                    Text(
+                      snapshot.error.toString(),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 12),
-                    ElevatedButton(onPressed: _reload, child: const Text('Retry')),
+                    ElevatedButton(
+                      onPressed: _reload,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
             );
           }
 
-          final data = snapshot.data ??
+          final data =
+              snapshot.data ??
               const FacultyDashboardData(
                 courses: [],
                 studentCountByCourse: {},
@@ -227,14 +247,14 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
               _FacultyHomeTab(
                 data: data,
                 facultyName: user.name,
-                onOpenAttendance: () => setState(() => _tab = _FacultyTab.attendance),
-                onOpenAssignments: () => setState(() => _tab = _FacultyTab.assignments),
-                onOpenNotifications: () => setState(() => _tab = _FacultyTab.notifications),
+                onOpenAttendance: () =>
+                    setState(() => _tab = _FacultyTab.attendance),
+                onOpenAssignments: () =>
+                    setState(() => _tab = _FacultyTab.assignments),
+                onOpenNotifications: () =>
+                    setState(() => _tab = _FacultyTab.notifications),
               ),
-              _FacultyCoursesTab(
-                data: data,
-                service: _service,
-              ),
+              _FacultyCoursesTab(data: data, service: _service),
               _FacultyAttendanceTab(
                 data: data,
                 facultyId: firebaseUser.uid,
@@ -287,12 +307,30 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           showUnselectedLabels: true,
           onTap: (index) => setState(() => _tab = _FacultyTab.values[index]),
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-            BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), label: 'Courses'),
-            BottomNavigationBarItem(icon: Icon(Icons.checklist_outlined), label: 'Attendance'),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Tasks'),
-            BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), label: 'Notices'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_outlined),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book_outlined),
+              label: 'Courses',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.checklist_outlined),
+              label: 'Attendance',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.assignment_outlined),
+              label: 'Tasks',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.campaign_outlined),
+              label: 'Notices',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Profile',
+            ),
           ],
         ),
       ),
@@ -335,9 +373,9 @@ class _FacultyHomeTab extends StatelessWidget {
         Text(
           'Hello, $facultyName',
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: AppColors.primaryDark,
-              ),
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryDark,
+          ),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -351,7 +389,12 @@ class _FacultyHomeTab extends StatelessWidget {
             children: [
               const Text(
                 'COURSE MANAGEMENT',
-                style: TextStyle(color: AppColors.ink500, letterSpacing: 1.2, fontSize: 11, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: AppColors.ink500,
+                  letterSpacing: 1.2,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 14),
               Row(
@@ -382,7 +425,10 @@ class _FacultyHomeTab extends StatelessWidget {
                 runSpacing: 8,
                 children: data.courses
                     .take(3)
-                    .map((course) => _TagChip(label: '${course.code} ${course.semester}'))
+                    .map(
+                      (course) =>
+                          _TagChip(label: '${course.code} ${course.semester}'),
+                    )
                     .toList(),
               ),
             ],
@@ -410,12 +456,22 @@ class _FacultyHomeTab extends StatelessWidget {
                   children: [
                     const Text(
                       'PENDING TASKS',
-                      style: TextStyle(color: Colors.white70, letterSpacing: 1.1, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: Colors.white70,
+                        letterSpacing: 1.1,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       '${data.pendingTasks}',
-                      style: const TextStyle(color: Colors.white, fontSize: 56, height: 0.95, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 56,
+                        height: 0.95,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
@@ -437,7 +493,11 @@ class _FacultyHomeTab extends StatelessWidget {
                   color: Colors.white.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.assignment_turned_in_outlined, color: Colors.white, size: 42),
+                child: const Icon(
+                  Icons.assignment_turned_in_outlined,
+                  color: Colors.white,
+                  size: 42,
+                ),
               ),
             ],
           ),
@@ -445,7 +505,11 @@ class _FacultyHomeTab extends StatelessWidget {
         const SizedBox(height: 24),
         const Text(
           'Quick Actions',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 34, color: AppColors.primaryDark),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 34,
+            color: AppColors.primaryDark,
+          ),
         ),
         const SizedBox(height: 10),
         GridView.count(
@@ -489,7 +553,11 @@ class _FacultyHomeTab extends StatelessWidget {
         const SizedBox(height: 24),
         const Text(
           'Upcoming Schedule',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 34, color: AppColors.primaryDark),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 34,
+            color: AppColors.primaryDark,
+          ),
         ),
         const SizedBox(height: 12),
         ...upcoming.map(
@@ -519,7 +587,11 @@ class _FacultyHomeTab extends StatelessWidget {
             children: [
               const Text(
                 'Department Notice',
-                style: TextStyle(fontSize: 30, color: AppColors.primaryDark, fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  fontSize: 30,
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 10),
               ClipRRect(
@@ -528,7 +600,11 @@ class _FacultyHomeTab extends StatelessWidget {
                   height: 140,
                   color: const Color(0xFFDDE8F2),
                   alignment: Alignment.center,
-                  child: const Icon(Icons.apartment_outlined, size: 54, color: AppColors.primaryDark),
+                  child: const Icon(
+                    Icons.apartment_outlined,
+                    size: 54,
+                    color: AppColors.primaryDark,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -554,10 +630,7 @@ class _FacultyCoursesTab extends StatelessWidget {
   final FacultyDashboardData data;
   final FacultyModuleService service;
 
-  const _FacultyCoursesTab({
-    required this.data,
-    required this.service,
-  });
+  const _FacultyCoursesTab({required this.data, required this.service});
 
   @override
   Widget build(BuildContext context) {
@@ -595,9 +668,20 @@ class _FacultyCoursesTab extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _GlassStatCard(title: 'ACTIVE COURSES', value: '${data.courses.length}')),
+            Expanded(
+              child: _GlassStatCard(
+                title: 'ACTIVE COURSES',
+                value: '${data.courses.length}',
+              ),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: _GlassStatCard(title: 'LIVE TASKS', value: '${data.pendingTasks}', accent: AppColors.primaryDark)),
+            Expanded(
+              child: _GlassStatCard(
+                title: 'LIVE TASKS',
+                value: '${data.pendingTasks}',
+                accent: AppColors.primaryDark,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -610,7 +694,9 @@ class _FacultyCoursesTab extends StatelessWidget {
               code: course.code,
               semester: course.semester,
               students: count,
-              accent: count > 90 ? const Color(0xFF01695B) : AppColors.primaryDark,
+              accent: count > 90
+                  ? const Color(0xFF01695B)
+                  : AppColors.primaryDark,
               onUploadResults: () => _openResultsSheet(context, course),
             ),
           );
@@ -622,12 +708,22 @@ class _FacultyCoursesTab extends StatelessWidget {
             children: [
               const Text(
                 'EXCLUSIVE INSIGHT',
-                style: TextStyle(color: Color(0xFF01695B), letterSpacing: 1.2, fontWeight: FontWeight.w700, fontSize: 11),
+                style: TextStyle(
+                  color: Color(0xFF01695B),
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Curate your next\nresearch colloquium.',
-                style: TextStyle(color: AppColors.primaryDark, fontSize: 48, fontWeight: FontWeight.w800, height: 1.08),
+                style: TextStyle(
+                  color: AppColors.primaryDark,
+                  fontSize: 48,
+                  fontWeight: FontWeight.w800,
+                  height: 1.08,
+                ),
               ),
               const SizedBox(height: 10),
               const Text(
@@ -646,19 +742,25 @@ class _FacultyCoursesTab extends StatelessWidget {
     );
   }
 
-  Future<void> _openResultsSheet(BuildContext context, CourseModel course) async {
+  Future<void> _openResultsSheet(
+    BuildContext context,
+    CourseModel course,
+  ) async {
     final students = await service.fetchStudentsForCourse(course.courseId);
     if (students.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No enrolled students found for this course.')),
+          const SnackBar(
+            content: Text('No enrolled students found for this course.'),
+          ),
         );
       }
       return;
     }
 
     final controllers = <String, TextEditingController>{
-      for (final student in students) student.studentId: TextEditingController(),
+      for (final student in students)
+        student.studentId: TextEditingController(),
     };
     var saving = false;
     var sheetDismissed = false;
@@ -690,7 +792,9 @@ class _FacultyCoursesTab extends StatelessWidget {
       } catch (error) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+            SnackBar(
+              content: Text(error.toString().replaceFirst('Exception: ', '')),
+            ),
           );
         }
       } finally {
@@ -720,7 +824,9 @@ class _FacultyCoursesTab extends StatelessWidget {
                 return Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
                   child: ListView(
                     controller: scrollController,
@@ -739,7 +845,8 @@ class _FacultyCoursesTab extends StatelessWidget {
                       const SizedBox(height: 16),
                       Text(
                         'Upload Results',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
                               fontWeight: FontWeight.w800,
                               color: AppColors.ink900,
                             ),
@@ -763,9 +870,21 @@ class _FacultyCoursesTab extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(student.name, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                                Text(
+                                  student.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink900,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text(student.email, style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+                                Text(
+                                  student.email,
+                                  style: const TextStyle(
+                                    color: AppColors.ink500,
+                                    fontSize: 12,
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
                                 TextField(
                                   controller: controllers[student.studentId],
@@ -779,11 +898,21 @@ class _FacultyCoursesTab extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 Builder(
                                   builder: (_) {
-                                  final raw = int.tryParse(controllers[student.studentId]!.text.trim()) ?? 0;
-                                    final grade = gradeFromMarks(raw.clamp(0, 100));
+                                    final raw =
+                                        int.tryParse(
+                                          controllers[student.studentId]!.text
+                                              .trim(),
+                                        ) ??
+                                        0;
+                                    final grade = gradeFromMarks(
+                                      raw.clamp(0, 100),
+                                    );
                                     return Text(
                                       'Grade preview: $grade',
-                                      style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+                                      style: const TextStyle(
+                                        color: AppColors.primaryDark,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     );
                                   },
                                 ),
@@ -794,16 +923,25 @@ class _FacultyCoursesTab extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       FilledButton.icon(
-                        onPressed: saving ? null : () async => saveResults(setSheetState),
+                        onPressed: saving
+                            ? null
+                            : () async => saveResults(setSheetState),
                         icon: saving
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Icon(Icons.upload_outlined),
-                        label: Text(saving ? 'Publishing...' : 'Publish Results'),
-                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                        label: Text(
+                          saving ? 'Publishing...' : 'Publish Results',
+                        ),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
+                        ),
                       ),
                     ],
                   ),
@@ -853,7 +991,9 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
       _students = students;
       _attendance
         ..clear()
-        ..addEntries(students.map((student) => MapEntry(student.studentId, true)));
+        ..addEntries(
+          students.map((student) => MapEntry(student.studentId, true)),
+        );
       _loadingStudents = false;
     });
   }
@@ -869,7 +1009,9 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
     );
     if (!mounted) return;
     setState(() => _submitting = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance saved successfully.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Attendance saved successfully.')),
+    );
   }
 
   @override
@@ -958,7 +1100,9 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
                 children: [
                   const Icon(Icons.calendar_month_outlined),
                   const SizedBox(width: 8),
-                  Text('Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}'),
+                  Text(
+                    'Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}',
+                  ),
                 ],
               ),
             ),
@@ -1008,7 +1152,11 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
               const Expanded(
                 child: Text(
                   'Roll Call List',
-                  style: TextStyle(color: AppColors.primaryDark, fontSize: 30, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: AppColors.primaryDark,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               TextButton(
@@ -1032,12 +1180,18 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
         else
           ..._students.map(
             (student) => Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: SwitchListTile(
-                title: Text(student.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                title: Text(
+                  student.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 subtitle: Text(student.email),
                 value: _attendance[student.studentId] ?? true,
-                onChanged: (value) => setState(() => _attendance[student.studentId] = value),
+                onChanged: (value) =>
+                    setState(() => _attendance[student.studentId] = value),
                 activeColor: Colors.white,
                 activeTrackColor: const Color(0xFF01695B),
                 inactiveTrackColor: AppColors.ink100,
@@ -1045,7 +1199,10 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
                   backgroundColor: AppColors.ink100,
                   child: Text(
                     _initials(student.name),
-                    style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.primaryDark,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
@@ -1055,7 +1212,11 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
         _GlassCard(
           child: const Text(
             'Curator Insight\nAttendance today is higher than weekly average for this course.',
-            style: TextStyle(color: AppColors.primaryDark, height: 1.4, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              color: AppColors.primaryDark,
+              height: 1.4,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -1124,7 +1285,11 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
     _descCtrl.clear();
     await widget.onRefreshParent();
     setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment created and students notified.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Assignment created and students notified.'),
+      ),
+    );
   }
 
   Future<void> _createQuiz() async {
@@ -1142,7 +1307,12 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim(),
       durationMinutes: int.tryParse(_quizDurationCtrl.text.trim()) ?? 15,
-      totalMarks: int.tryParse(_quizMarksCtrl.text.trim()) ?? questions.fold<int>(0, (sum, q) => sum + ((q['marks'] as num?)?.toInt() ?? 1)),
+      totalMarks:
+          int.tryParse(_quizMarksCtrl.text.trim()) ??
+          questions.fold<int>(
+            0,
+            (sum, q) => sum + ((q['marks'] as num?)?.toInt() ?? 1),
+          ),
       questions: questions,
     );
     if (!mounted) return;
@@ -1158,7 +1328,9 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
       ..add(_QuizQuestionDraft());
     await widget.onRefreshParent();
     setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quiz created and students notified.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Quiz created and students notified.')),
+    );
   }
 
   Future<void> _showQuizScores(QuizModel quiz) async {
@@ -1179,21 +1351,37 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return Center(child: Text(snapshot.error.toString(), textAlign: TextAlign.center));
+                return Center(
+                  child: Text(
+                    snapshot.error.toString(),
+                    textAlign: TextAlign.center,
+                  ),
+                );
               }
               final attempts = snapshot.data ?? [];
               return ListView(
                 controller: scrollController,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 children: [
-                  Text(quiz.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  Text(
+                    quiz.title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text('${attempts.length} student submissions', style: const TextStyle(color: AppColors.ink500)),
+                  Text(
+                    '${attempts.length} student submissions',
+                    style: const TextStyle(color: AppColors.ink500),
+                  ),
                   const SizedBox(height: 14),
                   if (attempts.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: Text('No one has submitted this quiz yet.')),
+                      child: Center(
+                        child: Text('No one has submitted this quiz yet.'),
+                      ),
                     )
                   else
                     ...attempts.map(
@@ -1203,13 +1391,28 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(attempt.studentName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                              Text(
+                                attempt.studentName,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.ink900,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text(attempt.studentEmail.isEmpty ? attempt.submission.studentId : attempt.studentEmail, style: const TextStyle(color: AppColors.ink500)),
+                              Text(
+                                attempt.studentEmail.isEmpty
+                                    ? attempt.submission.studentId
+                                    : attempt.studentEmail,
+                                style: const TextStyle(color: AppColors.ink500),
+                              ),
                               const SizedBox(height: 8),
                               Text(
                                 'Score: ${attempt.submission.score}/${attempt.totalMarks} (${attempt.percentage.toStringAsFixed(0)}%)',
-                                style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  color: AppColors.primaryDark,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -1230,10 +1433,194 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
     );
   }
 
+  Future<void> _openMaterial(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid material link.')));
+      return;
+    }
+
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the material.')),
+      );
+    }
+  }
+
   Future<void> _uploadMaterial() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Study material upload is coming soon.')),
+    if (widget.data.courses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add a course before uploading materials.'),
+        ),
+      );
+      return;
+    }
+
+    final fileNameCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    String selectedCourseId = _courseId ?? widget.data.courses.first.courseId;
+    Uint8List? fileBytes;
+    String? pickedFileName;
+    bool uploading = false;
+
+    final uploaded = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> chooseFile() async {
+              final picked = await FilePicker.platform.pickFiles(
+                allowMultiple: false,
+                withData: true,
+                type: FileType.any,
+              );
+              if (picked == null) return;
+
+              final file = picked.files.single;
+              if (file.bytes == null) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not read the selected file.'),
+                  ),
+                );
+                return;
+              }
+
+              setDialogState(() {
+                fileBytes = file.bytes;
+                pickedFileName = file.name;
+                if (fileNameCtrl.text.trim().isEmpty) {
+                  fileNameCtrl.text = file.name;
+                }
+              });
+            }
+
+            Future<void> submit() async {
+              if (uploading ||
+                  !formKey.currentState!.validate() ||
+                  fileBytes == null)
+                return;
+              setDialogState(() => uploading = true);
+              try {
+                await widget.service.uploadStudyMaterial(
+                  facultyId: widget.facultyId,
+                  courseId: selectedCourseId,
+                  fileName: fileNameCtrl.text.trim(),
+                  fileBytes: fileBytes!,
+                );
+                if (!mounted) return;
+                Navigator.of(dialogContext).pop(true);
+              } catch (error) {
+                setDialogState(() => uploading = false);
+                ScaffoldMessenger.of(
+                  dialogContext,
+                ).showSnackBar(SnackBar(content: Text(error.toString())));
+              }
+            }
+
+            return AlertDialog(
+              title: const Text('Upload Study Material'),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: selectedCourseId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Course'),
+                        items: widget.data.courses
+                            .map(
+                              (course) => DropdownMenuItem<String>(
+                                value: course.courseId,
+                                child: Text(
+                                  '${course.code} | ${course.title}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: uploading
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setDialogState(() => selectedCourseId = value);
+                              },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: fileNameCtrl,
+                        enabled: !uploading,
+                        decoration: const InputDecoration(
+                          labelText: 'Display name',
+                          hintText: 'What students will see',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter a display name.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: uploading ? null : chooseFile,
+                          icon: const Icon(Icons.attach_file_outlined),
+                          label: const Text('Choose file'),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          pickedFileName == null
+                              ? 'No file selected yet.'
+                              : 'Selected: $pickedFileName',
+                          style: const TextStyle(
+                            color: AppColors.ink500,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: uploading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: uploading ? null : submit,
+                  child: Text(uploading ? 'Uploading...' : 'Upload'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+
+    fileNameCtrl.dispose();
+
+    if (uploaded == true) {
+      await widget.onRefreshParent();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Study material uploaded.')),
+      );
+    }
   }
 
   void _addQuizQuestion() {
@@ -1267,7 +1654,12 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
         const SizedBox(height: 8),
         const Text(
           'Assignment & Resource\nCurator',
-          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 54, color: AppColors.primaryDark, height: 1.05),
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 54,
+            color: AppColors.primaryDark,
+            height: 1.05,
+          ),
         ),
         const SizedBox(height: 10),
         const Text(
@@ -1297,8 +1689,14 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _mode == _ComposerMode.assignment ? 'Create Assignment' : 'Create Quiz',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: AppColors.primaryDark),
+                _mode == _ComposerMode.assignment
+                    ? 'Create Assignment'
+                    : 'Create Quiz',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  color: AppColors.primaryDark,
+                ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -1332,9 +1730,16 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                 onChanged: (value) => setState(() => _courseId = value),
               ),
               const SizedBox(height: 12),
-              TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
               const SizedBox(height: 12),
-              TextField(controller: _descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
+              TextField(
+                controller: _descCtrl,
+                decoration: const InputDecoration(labelText: 'Description'),
+                maxLines: 3,
+              ),
               const SizedBox(height: 12),
               if (_mode == _ComposerMode.assignment)
                 SizedBox(
@@ -1352,7 +1757,10 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                       }
                     },
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
                       alignment: Alignment.center,
                     ),
                     child: FittedBox(
@@ -1362,7 +1770,9 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                         children: [
                           const Icon(Icons.event_outlined),
                           const SizedBox(width: 8),
-                          Text('Due: ${DateFormat('dd MMM yyyy').format(_dueDate)}'),
+                          Text(
+                            'Due: ${DateFormat('dd MMM yyyy').format(_dueDate)}',
+                          ),
                         ],
                       ),
                     ),
@@ -1375,7 +1785,9 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                       child: TextField(
                         controller: _quizDurationCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Duration (minutes)'),
+                        decoration: const InputDecoration(
+                          labelText: 'Duration (minutes)',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1383,7 +1795,9 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                       child: TextField(
                         controller: _quizMarksCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Total marks'),
+                        decoration: const InputDecoration(
+                          labelText: 'Total marks',
+                        ),
                       ),
                     ),
                   ],
@@ -1415,15 +1829,15 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                   onPressed: _saving
                       ? null
                       : _mode == _ComposerMode.assignment
-                          ? _createAssignment
-                          : _createQuiz,
+                      ? _createAssignment
+                      : _createQuiz,
                   icon: const Icon(Icons.add),
                   label: Text(
                     _saving
                         ? 'Saving...'
                         : _mode == _ComposerMode.assignment
-                            ? 'Create Assignment'
-                            : 'Create Quiz',
+                        ? 'Create Assignment'
+                        : 'Create Quiz',
                   ),
                 ),
               ),
@@ -1431,7 +1845,14 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
           ),
         ),
         const SizedBox(height: 12),
-        const Text('Active Assignments', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 38, color: AppColors.primaryDark)),
+        const Text(
+          'Active Assignments',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 38,
+            color: AppColors.primaryDark,
+          ),
+        ),
         const SizedBox(height: 10),
         _InfoPill(label: '${widget.data.assignments.length} Pending Reviews'),
         const SizedBox(height: 12),
@@ -1449,25 +1870,47 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                       Expanded(
                         child: Text(
                           assignment.title,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink900,
+                          ),
                         ),
                       ),
                       Text(
-                        DateFormat('dd MMM, yyyy').format(assignment.dueDate.toDate()),
-                        style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700),
+                        DateFormat(
+                          'dd MMM, yyyy',
+                        ).format(assignment.dueDate.toDate()),
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('Course: ${assignment.courseId}', style: const TextStyle(color: AppColors.ink700)),
+                  Text(
+                    'Course: ${assignment.courseId}',
+                    style: const TextStyle(color: AppColors.ink700),
+                  ),
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      const Icon(Icons.verified_outlined, size: 16, color: Color(0xFF01695B)),
+                      const Icon(
+                        Icons.verified_outlined,
+                        size: 16,
+                        color: Color(0xFF01695B),
+                      ),
                       const SizedBox(width: 6),
-                      const Text('85% Participation', style: TextStyle(color: AppColors.ink700)),
+                      const Text(
+                        '85% Participation',
+                        style: TextStyle(color: AppColors.ink700),
+                      ),
                       const Spacer(),
-                      TextButton(onPressed: () {}, child: const Text('Edit Requirements')),
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('Edit Requirements'),
+                      ),
                     ],
                   ),
                 ],
@@ -1478,16 +1921,29 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
         if (widget.data.assignments.isEmpty)
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
-            child: Text('No assignments created yet.', style: TextStyle(color: AppColors.ink500)),
+            child: Text(
+              'No assignments created yet.',
+              style: TextStyle(color: AppColors.ink500),
+            ),
           ),
         const Divider(),
         const SizedBox(height: 8),
-        const Text('Active Quizzes', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 38, color: AppColors.primaryDark)),
+        const Text(
+          'Active Quizzes',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 38,
+            color: AppColors.primaryDark,
+          ),
+        ),
         const SizedBox(height: 12),
         if (widget.data.quizzes.isEmpty)
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
-            child: Text('No quizzes created yet.', style: TextStyle(color: AppColors.ink500)),
+            child: Text(
+              'No quizzes created yet.',
+              style: TextStyle(color: AppColors.ink500),
+            ),
           )
         else
           ...widget.data.quizzes.map(
@@ -1501,13 +1957,32 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(quiz.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                      Text(
+                        quiz.title,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink900,
+                        ),
+                      ),
                       const SizedBox(height: 6),
-                      Text('Course: ${quiz.courseId}', style: const TextStyle(color: AppColors.ink700)),
+                      Text(
+                        'Course: ${quiz.courseId}',
+                        style: const TextStyle(color: AppColors.ink700),
+                      ),
                       const SizedBox(height: 6),
-                      Text('Total marks: ${quiz.totalMarks}', style: const TextStyle(color: AppColors.ink700)),
+                      Text(
+                        'Total marks: ${quiz.totalMarks}',
+                        style: const TextStyle(color: AppColors.ink700),
+                      ),
                       const SizedBox(height: 10),
-                      const Text('Tap to view student scores', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
+                      const Text(
+                        'Tap to view student scores',
+                        style: TextStyle(
+                          color: AppColors.primaryDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1521,13 +1996,17 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
             const Expanded(
               child: Text(
                 'Study Material',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 38, color: AppColors.primaryDark),
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 38,
+                  color: AppColors.primaryDark,
+                ),
               ),
             ),
             TextButton.icon(
               onPressed: _uploadMaterial,
               icon: const Icon(Icons.upload_file_outlined, size: 16),
-              label: const Text('ADD LINK'),
+              label: const Text('UPLOAD FILE'),
             ),
           ],
         ),
@@ -1538,7 +2017,10 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                 ? [
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text('No study materials uploaded yet.', style: TextStyle(color: AppColors.ink500)),
+                      child: Text(
+                        'No study materials uploaded yet.',
+                        style: TextStyle(color: AppColors.ink500),
+                      ),
                     ),
                   ]
                 : [
@@ -1547,8 +2029,10 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _MaterialTile(
                           fileName: material.fileName,
-                          meta: '${material.courseId} • ${DateFormat('dd MMM, yyyy').format(material.uploadedAt.toDate())}',
-                          isLink: true,
+                          onTap: () => _openMaterial(material.fileUrl),
+                          meta:
+                              '${material.courseId} • ${DateFormat('dd MMM, yyyy').format(material.uploadedAt.toDate())}',
+                          isLink: false,
                         ),
                       ),
                     ),
@@ -1581,13 +2065,19 @@ class _QuizQuestionCard extends StatelessWidget {
             children: [
               Text(
                 'Question ${index + 1}',
-                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryDark,
+                ),
               ),
               const Spacer(),
               if (index > 0)
                 IconButton(
                   onPressed: onRemove,
-                  icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.danger,
+                  ),
                 ),
             ],
           ),
@@ -1638,7 +2128,9 @@ class _QuizQuestionCard extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: draft.answerCtrl,
-                  decoration: const InputDecoration(labelText: 'Correct answer text'),
+                  decoration: const InputDecoration(
+                    labelText: 'Correct answer text',
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1672,7 +2164,8 @@ class _FacultyNotificationsTab extends StatefulWidget {
   });
 
   @override
-  State<_FacultyNotificationsTab> createState() => _FacultyNotificationsTabState();
+  State<_FacultyNotificationsTab> createState() =>
+      _FacultyNotificationsTabState();
 }
 
 class _FacultyNotificationsTabState extends State<_FacultyNotificationsTab> {
@@ -1699,7 +2192,9 @@ class _FacultyNotificationsTabState extends State<_FacultyNotificationsTab> {
     _messageCtrl.clear();
     await widget.onRefreshParent();
     setState(() => _sending = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Announcement sent to enrolled students.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Announcement sent to enrolled students.')),
+    );
   }
 
   @override
@@ -1707,7 +2202,10 @@ class _FacultyNotificationsTabState extends State<_FacultyNotificationsTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('Send Announcement', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        const Text(
+          'Send Announcement',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           value: _courseId,
@@ -1757,7 +2255,10 @@ class _FacultyNotificationsTabState extends State<_FacultyNotificationsTab> {
         const SizedBox(height: 20),
         const Divider(),
         const SizedBox(height: 8),
-        const Text('Recent Notifications', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        const Text(
+          'Recent Notifications',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+        ),
         const SizedBox(height: 10),
         ...widget.data.announcements.map(
           (notification) => Card(
@@ -1767,7 +2268,8 @@ class _FacultyNotificationsTabState extends State<_FacultyNotificationsTab> {
             ),
           ),
         ),
-        if (widget.data.announcements.isEmpty) const Text('No announcements created by this faculty yet.'),
+        if (widget.data.announcements.isEmpty)
+          const Text('No announcements created by this faculty yet.'),
       ],
     );
   }
@@ -1802,7 +2304,11 @@ class _FacultyProfileTab extends StatelessWidget {
               backgroundColor: AppColors.primaryDark,
               child: Text(
                 _initials(userName),
-                style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -1814,10 +2320,18 @@ class _FacultyProfileTab extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     userName,
-                    style: const TextStyle(fontSize: 46, fontWeight: FontWeight.w800, color: AppColors.primaryDark, height: 1.05),
+                    style: const TextStyle(
+                      fontSize: 46,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                      height: 1.05,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Text('$designation, Dept. of $department', style: const TextStyle(color: AppColors.ink700)),
+                  Text(
+                    '$designation, Dept. of $department',
+                    style: const TextStyle(color: AppColors.ink700),
+                  ),
                 ],
               ),
             ),
@@ -1839,24 +2353,31 @@ class _FacultyProfileTab extends StatelessWidget {
             children: const [
               Text(
                 'Research Interests',
-                style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 38),
+                style: TextStyle(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 38,
+                ),
               ),
               SizedBox(height: 10),
               _InterestTile(
                 title: 'Cognitive Aesthetics',
-                subtitle: 'Exploring the intersection of human perception and digital forms.',
+                subtitle:
+                    'Exploring the intersection of human perception and digital forms.',
                 icon: Icons.psychology_alt_outlined,
               ),
               SizedBox(height: 10),
               _InterestTile(
                 title: 'Renaissance Revival',
-                subtitle: 'Applying classical composition techniques to modern interface design.',
+                subtitle:
+                    'Applying classical composition techniques to modern interface design.',
                 icon: Icons.draw_outlined,
               ),
               SizedBox(height: 10),
               _InterestTile(
                 title: 'Networked Pedagogy',
-                subtitle: 'Decentralized models for collective learning in arts education.',
+                subtitle:
+                    'Decentralized models for collective learning in arts education.',
                 icon: Icons.hub_outlined,
               ),
             ],
@@ -1878,14 +2399,20 @@ class _FacultyProfileTab extends StatelessWidget {
           accent: const Color(0xFF9AD2CB),
           child: const Text(
             'Insight Module\nTop Researcher 2023',
-            style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: AppColors.primaryDark,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: onLogout,
           icon: const Icon(Icons.logout_outlined, color: AppColors.danger),
-          label: const Text('Logout from Portal', style: TextStyle(color: AppColors.danger)),
+          label: const Text(
+            'Logout from Portal',
+            style: TextStyle(color: AppColors.danger),
+          ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AppColors.danger),
             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1900,10 +2427,7 @@ class _GlassCard extends StatelessWidget {
   final Widget child;
   final Color? accent;
 
-  const _GlassCard({
-    required this.child,
-    this.accent,
-  });
+  const _GlassCard({required this.child, this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -1931,10 +2455,7 @@ class _MetricBlock extends StatelessWidget {
   final String value;
   final String label;
 
-  const _MetricBlock({
-    required this.value,
-    required this.label,
-  });
+  const _MetricBlock({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -1945,9 +2466,16 @@ class _MetricBlock extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(fontSize: 58, fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+            style: const TextStyle(
+              fontSize: 58,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryDark,
+            ),
           ),
-          Text(label, style: const TextStyle(color: AppColors.ink700, height: 1.2)),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.ink700, height: 1.2),
+          ),
         ],
       ),
     );
@@ -1967,7 +2495,10 @@ class _TagChip extends StatelessWidget {
         color: AppColors.ink100,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(label, style: const TextStyle(color: AppColors.ink700, fontSize: 12)),
+      child: Text(
+        label,
+        style: const TextStyle(color: AppColors.ink700, fontSize: 12),
+      ),
     );
   }
 }
@@ -2006,9 +2537,22 @@ class _ActionTile extends StatelessWidget {
               child: Icon(icon, color: iconColor, size: 22),
             ),
             const SizedBox(height: 12),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink900)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink900,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(subtitle, style: const TextStyle(color: AppColors.ink500, fontSize: 12, height: 1.3)),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                color: AppColors.ink500,
+                fontSize: 12,
+                height: 1.3,
+              ),
+            ),
           ],
         ),
       ),
@@ -2045,8 +2589,17 @@ class _ScheduleCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(timeLabel, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
-              Text(meridiem, style: const TextStyle(fontSize: 11, color: AppColors.ink500)),
+              Text(
+                timeLabel,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryDark,
+                ),
+              ),
+              Text(
+                meridiem,
+                style: const TextStyle(fontSize: 11, color: AppColors.ink500),
+              ),
             ],
           ),
         ),
@@ -2076,9 +2629,24 @@ class _GlassStatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.ink500, fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.ink500,
+              fontSize: 11,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: AppColors.primaryDark, fontSize: 46, fontWeight: FontWeight.w800)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryDark,
+              fontSize: 46,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -2125,15 +2693,31 @@ class _CourseTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Text(title, style: const TextStyle(fontSize: 40, height: 1.05, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 40,
+              height: 1.05,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryDark,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text('$code • $semester', style: const TextStyle(color: AppColors.ink500)),
+          Text(
+            '$code • $semester',
+            style: const TextStyle(color: AppColors.ink500),
+          ),
           const SizedBox(height: 10),
           const Divider(),
           const SizedBox(height: 4),
           Row(
             children: [
-              Expanded(child: Text('$students Students', style: const TextStyle(color: AppColors.ink700))),
+              Expanded(
+                child: Text(
+                  '$students Students',
+                  style: const TextStyle(color: AppColors.ink700),
+                ),
+              ),
               TextButton.icon(
                 onPressed: onUploadResults,
                 icon: const Icon(Icons.upload_outlined, size: 16),
@@ -2172,8 +2756,18 @@ class _SummaryStrip extends StatelessWidget {
             child: Icon(icon, color: accent),
           ),
           const SizedBox(height: 10),
-          Text(title, style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
-          Text(value, style: const TextStyle(color: AppColors.primaryDark, fontSize: 36, fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: const TextStyle(color: AppColors.ink500, fontSize: 12),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryDark,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -2209,48 +2803,67 @@ class _MaterialTile extends StatelessWidget {
   final String fileName;
   final String meta;
   final bool isLink;
+  final VoidCallback? onTap;
 
   const _MaterialTile({
     required this.fileName,
     required this.meta,
     this.isLink = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceWarm,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: isLink ? const Color(0xFFD9F1ED) : const Color(0xFFF8E5E7),
-              borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceWarm,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: isLink
+                    ? const Color(0xFFD9F1ED)
+                    : const Color(0xFFF8E5E7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                isLink ? Icons.link_outlined : Icons.picture_as_pdf_outlined,
+                color: isLink ? const Color(0xFF01695B) : AppColors.danger,
+                size: 18,
+              ),
             ),
-            child: Icon(
-              isLink ? Icons.link_outlined : Icons.picture_as_pdf_outlined,
-              color: isLink ? const Color(0xFF01695B) : AppColors.danger,
-              size: 18,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    style: const TextStyle(
+                      color: AppColors.ink500,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(fileName, style: const TextStyle(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(meta, style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2260,10 +2873,7 @@ class _TinyInfo extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _TinyInfo({
-    required this.icon,
-    required this.text,
-  });
+  const _TinyInfo({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -2311,9 +2921,19 @@ class _InterestTile extends StatelessWidget {
         children: [
           Icon(icon, color: const Color(0xFF01695B)),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22, color: AppColors.ink900)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 22,
+              color: AppColors.ink900,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: AppColors.ink500, height: 1.3)),
+          Text(
+            subtitle,
+            style: const TextStyle(color: AppColors.ink500, height: 1.3),
+          ),
         ],
       ),
     );
@@ -2324,10 +2944,7 @@ class _FieldRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _FieldRow({
-    required this.label,
-    required this.value,
-  });
+  const _FieldRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -2335,8 +2952,16 @@ class _FieldRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.ink500))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700))),
+          SizedBox(
+            width: 120,
+            child: Text(label, style: const TextStyle(color: AppColors.ink500)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
         ],
       ),
     );
@@ -2344,8 +2969,13 @@ class _FieldRow extends StatelessWidget {
 }
 
 String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
   if (parts.isEmpty) return 'F';
   if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
+  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+      .toUpperCase();
 }

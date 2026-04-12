@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/assignment.dart';
@@ -8,6 +9,7 @@ import '../models/notification.dart';
 import '../models/quiz_model.dart';
 import '../models/quiz_submission_model.dart';
 import '../models/study_material.dart';
+import 'storage_service.dart';
 
 class FacultyDashboardData {
   final List<CourseModel> courses;
@@ -54,7 +56,8 @@ class QuizAttemptSummary {
     required this.totalMarks,
   });
 
-  double get percentage => totalMarks <= 0 ? 0 : (submission.score / totalMarks) * 100;
+  double get percentage =>
+      totalMarks <= 0 ? 0 : (submission.score / totalMarks) * 100;
 }
 
 class FacultyModuleService {
@@ -62,6 +65,7 @@ class FacultyModuleService {
   static final FacultyModuleService instance = FacultyModuleService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final StorageService _storage = StorageService.instance;
 
   Future<FacultyDashboardData> loadDashboard({
     required String firebaseUid,
@@ -85,7 +89,8 @@ class FacultyModuleService {
       studentsByCourse.putIfAbsent(courseId, () => <String>{}).add(studentId);
     }
     final studentCountByCourse = {
-      for (final entry in studentsByCourse.entries) entry.key: entry.value.length,
+      for (final entry in studentsByCourse.entries)
+        entry.key: entry.value.length,
     };
 
     assignments.sort((a, b) => a.dueDate.compareTo(b.dueDate));
@@ -93,7 +98,11 @@ class FacultyModuleService {
 
     final now = DateTime.now();
     final dueSoonCount = assignments
-        .where((assignment) => assignment.dueDate.toDate().isBefore(now.add(const Duration(days: 3))))
+        .where(
+          (assignment) => assignment.dueDate.toDate().isBefore(
+            now.add(const Duration(days: 3)),
+          ),
+        )
         .length;
 
     return FacultyDashboardData(
@@ -135,8 +144,12 @@ class FacultyModuleService {
     }
 
     Future<void> resetCourseListeners(Iterable<String> courseIds) async {
-      final nextCourseIds = courseIds.where((id) => id.trim().isNotEmpty).map((id) => id.trim()).toSet();
-      if (nextCourseIds.length == currentCourseIds.length && nextCourseIds.difference(currentCourseIds).isEmpty) {
+      final nextCourseIds = courseIds
+          .where((id) => id.trim().isNotEmpty)
+          .map((id) => id.trim())
+          .toSet();
+      if (nextCourseIds.length == currentCourseIds.length &&
+          nextCourseIds.difference(currentCourseIds).isEmpty) {
         return;
       }
 
@@ -151,19 +164,39 @@ class FacultyModuleService {
       final courseIdList = currentCourseIds.toList();
       for (final batch in _chunk(courseIdList, 10)) {
         courseSubscriptions.add(
-          _db.collection('courses').where(FieldPath.documentId, whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+          _db
+              .collection('courses')
+              .where(FieldPath.documentId, whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot()),
         );
         courseSubscriptions.add(
-          _db.collection('assignments').where('courseId', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+          _db
+              .collection('assignments')
+              .where('courseId', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot()),
         );
         courseSubscriptions.add(
-          _db.collection('quizzes').where('course_id', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+          _db
+              .collection('quizzes')
+              .where('course_id', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot()),
         );
         courseSubscriptions.add(
-          _db.collection('materials').where('courseId', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+          _db
+              .collection('materials')
+              .where('courseId', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot()),
         );
         courseSubscriptions.add(
-          _db.collection('enrollments').where('courseId', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+          _db
+              .collection('enrollments')
+              .where('courseId', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot()),
         );
       }
     }
@@ -174,14 +207,22 @@ class FacultyModuleService {
 
       for (final batch in _chunk(facultyIds, 10)) {
         fixedSubscriptions.add(
-          _db.collection('courses').where('facultyId', whereIn: batch).snapshots().listen((snapshot) async {
-            final courseIds = snapshot.docs.map((doc) => doc.id).toSet();
-            await resetCourseListeners(courseIds);
-            await emitSnapshot();
-          }),
+          _db
+              .collection('courses')
+              .where('facultyId', whereIn: batch)
+              .snapshots()
+              .listen((snapshot) async {
+                final courseIds = snapshot.docs.map((doc) => doc.id).toSet();
+                await resetCourseListeners(courseIds);
+                await emitSnapshot();
+              }),
         );
         fixedSubscriptions.add(
-          _db.collection('notifications').where('createdBy', whereIn: batch).snapshots().listen((_) => emitSnapshot()),
+          _db
+              .collection('notifications')
+              .where('createdBy', whereIn: batch)
+              .snapshots()
+              .listen((_) => emitSnapshot()),
         );
       }
     }
@@ -205,12 +246,17 @@ class FacultyModuleService {
     return controller.stream;
   }
 
-  Future<List<CourseModel>> _fetchCoursesForFaculty(List<String> facultyIds) async {
+  Future<List<CourseModel>> _fetchCoursesForFaculty(
+    List<String> facultyIds,
+  ) async {
     if (facultyIds.isEmpty) return [];
     final results = <CourseModel>[];
 
     for (final batch in _chunk(facultyIds, 10)) {
-      final snap = await _db.collection('courses').where('facultyId', whereIn: batch).get();
+      final snap = await _db
+          .collection('courses')
+          .where('facultyId', whereIn: batch)
+          .get();
       results.addAll(
         snap.docs.map((doc) => CourseModel.fromMap(doc.data(), doc.id)),
       );
@@ -220,22 +266,34 @@ class FacultyModuleService {
     return results;
   }
 
-  Future<List<Map<String, dynamic>>> _fetchEnrollments(List<String> courseIds) async {
+  Future<List<Map<String, dynamic>>> _fetchEnrollments(
+    List<String> courseIds,
+  ) async {
     if (courseIds.isEmpty) return [];
     final results = <Map<String, dynamic>>[];
     for (final batch in _chunk(courseIds, 10)) {
-      final snap = await _db.collection('enrollments').where('courseId', whereIn: batch).get();
+      final snap = await _db
+          .collection('enrollments')
+          .where('courseId', whereIn: batch)
+          .get();
       results.addAll(snap.docs.map((doc) => doc.data()));
     }
     return results;
   }
 
-  Future<List<AssignmentModel>> _fetchAssignments(List<String> courseIds) async {
+  Future<List<AssignmentModel>> _fetchAssignments(
+    List<String> courseIds,
+  ) async {
     if (courseIds.isEmpty) return [];
     final results = <AssignmentModel>[];
     for (final batch in _chunk(courseIds, 10)) {
-      final snap = await _db.collection('assignments').where('courseId', whereIn: batch).get();
-      results.addAll(snap.docs.map((doc) => AssignmentModel.fromMap(doc.data(), doc.id)));
+      final snap = await _db
+          .collection('assignments')
+          .where('courseId', whereIn: batch)
+          .get();
+      results.addAll(
+        snap.docs.map((doc) => AssignmentModel.fromMap(doc.data(), doc.id)),
+      );
     }
     return results;
   }
@@ -244,22 +302,97 @@ class FacultyModuleService {
     if (courseIds.isEmpty) return [];
     final results = <QuizModel>[];
     for (final batch in _chunk(courseIds, 10)) {
-      final snap = await _db.collection('quizzes').where('course_id', whereIn: batch).get();
-      results.addAll(snap.docs.map((doc) => QuizModel.fromMap(doc.data(), doc.id)));
+      final snap = await _db
+          .collection('quizzes')
+          .where('course_id', whereIn: batch)
+          .get();
+      results.addAll(
+        snap.docs.map((doc) => QuizModel.fromMap(doc.data(), doc.id)),
+      );
     }
     results.sort((a, b) => a.endTime.compareTo(b.endTime));
     return results;
   }
 
-  Future<List<StudyMaterialModel>> _fetchMaterials(List<String> courseIds) async {
+  Future<List<StudyMaterialModel>> _fetchMaterials(
+    List<String> courseIds,
+  ) async {
     if (courseIds.isEmpty) return [];
     final results = <StudyMaterialModel>[];
     for (final batch in _chunk(courseIds, 10)) {
-      final snap = await _db.collection('materials').where('courseId', whereIn: batch).get();
-      results.addAll(snap.docs.map((doc) => StudyMaterialModel.fromMap(doc.data(), doc.id)));
+      final snap = await _db
+          .collection('materials')
+          .where('courseId', whereIn: batch)
+          .get();
+      results.addAll(
+        snap.docs.map((doc) => StudyMaterialModel.fromMap(doc.data(), doc.id)),
+      );
     }
     results.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
     return results;
+  }
+
+  Future<StudyMaterialModel> uploadStudyMaterial({
+    required String facultyId,
+    required String courseId,
+    required String fileName,
+    required List<int> fileBytes,
+    String? contentType,
+  }) async {
+    final upload = await _storage.uploadStudyMaterial(
+      bytes: Uint8List.fromList(fileBytes),
+      fileName: fileName,
+      courseId: courseId,
+      facultyId: facultyId,
+      contentType: contentType,
+    );
+
+    final docRef = _db.collection('materials').doc();
+    final noticeRef = _db.collection('notifications').doc();
+    final uploadedAt = Timestamp.now();
+    final material = StudyMaterialModel(
+      id: docRef.id,
+      courseId: courseId,
+      fileName: upload.fileName,
+      fileUrl: upload.publicUrl,
+      uploadedBy: facultyId,
+      uploadedAt: uploadedAt,
+      storagePath: upload.storagePath,
+      contentType: upload.contentType,
+      fileSize: upload.fileSize,
+    );
+
+    final batch = _db.batch();
+
+    batch.set(docRef, {
+      'courseId': material.courseId,
+      'fileName': material.fileName,
+      'fileUrl': material.fileUrl,
+      'storagePath': material.storagePath,
+      'contentType': material.contentType,
+      'fileSize': material.fileSize,
+      'uploadedBy': material.uploadedBy,
+      'uploadedAt': material.uploadedAt,
+    });
+
+    batch.set(noticeRef, {
+      'title': 'New Study Material',
+      'body': fileName,
+      'message': 'Study material "$fileName" has been uploaded.',
+      'type': 'material',
+      'audience': 'course',
+      'courseId': courseId,
+      'route': '/student/dashboard?tab=courses',
+      'sourceId': docRef.id,
+      'sourceCollection': 'materials',
+      'createdBy': facultyId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'read': false,
+    });
+
+    await batch.commit();
+
+    return material;
   }
 
   Future<List<QuizAttemptSummary>> fetchQuizAttempts(String quizId) async {
@@ -267,9 +400,15 @@ class FacultyModuleService {
     final quizData = quizDoc.data() ?? <String, dynamic>{};
     final totalMarks = (quizData['total_marks'] as num?)?.toInt() ?? 0;
 
-    final snap = await _db.collection('quiz_submissions').where('quiz_id', isEqualTo: quizId).get();
-    final submissions = snap.docs.map((doc) => QuizSubmissionModel.fromMap(doc.data(), doc.id)).toList()
-      ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
+    final snap = await _db
+        .collection('quiz_submissions')
+        .where('quiz_id', isEqualTo: quizId)
+        .get();
+    final submissions =
+        snap.docs
+            .map((doc) => QuizSubmissionModel.fromMap(doc.data(), doc.id))
+            .toList()
+          ..sort((a, b) => b.submittedAt.compareTo(a.submittedAt));
 
     final attempts = <QuizAttemptSummary>[];
     for (final submission in submissions) {
@@ -289,14 +428,22 @@ class FacultyModuleService {
     return attempts;
   }
 
-  Future<List<NotificationModel>> _fetchAnnouncements(String firebaseUid, String userDocId) async {
+  Future<List<NotificationModel>> _fetchAnnouncements(
+    String firebaseUid,
+    String userDocId,
+  ) async {
     final actorIds = _uniqueIds([firebaseUid, userDocId]);
     if (actorIds.isEmpty) return [];
 
     final results = <NotificationModel>[];
     for (final batch in _chunk(actorIds, 10)) {
-      final snap = await _db.collection('notifications').where('createdBy', whereIn: batch).get();
-      results.addAll(snap.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)));
+      final snap = await _db
+          .collection('notifications')
+          .where('createdBy', whereIn: batch)
+          .get();
+      results.addAll(
+        snap.docs.map((doc) => NotificationModel.fromMap(doc.data(), doc.id)),
+      );
     }
     return results;
   }
@@ -323,25 +470,35 @@ class FacultyModuleService {
         students.add(
           CourseStudent(
             studentId: studentId,
-            name: (data['name'] as String?)?.trim().isNotEmpty == true ? data['name'] as String : 'Student',
+            name: (data['name'] as String?)?.trim().isNotEmpty == true
+                ? data['name'] as String
+                : 'Student',
             email: (data['email'] as String?) ?? '',
           ),
         );
         continue;
       }
 
-      final query = await _db.collection('users').where('uid_firebase', isEqualTo: studentId).limit(1).get();
+      final query = await _db
+          .collection('users')
+          .where('uid_firebase', isEqualTo: studentId)
+          .limit(1)
+          .get();
       if (query.docs.isNotEmpty) {
         final data = query.docs.first.data();
         students.add(
           CourseStudent(
             studentId: studentId,
-            name: (data['name'] as String?)?.trim().isNotEmpty == true ? data['name'] as String : 'Student',
+            name: (data['name'] as String?)?.trim().isNotEmpty == true
+                ? data['name'] as String
+                : 'Student',
             email: (data['email'] as String?) ?? '',
           ),
         );
       } else {
-        students.add(CourseStudent(studentId: studentId, name: 'Student', email: ''));
+        students.add(
+          CourseStudent(studentId: studentId, name: 'Student', email: ''),
+        );
       }
     }
 
@@ -355,25 +512,22 @@ class FacultyModuleService {
     required DateTime date,
     required Map<String, bool> attendanceByStudent,
   }) async {
-    final dayKey = '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
+    final dayKey =
+        '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
     final batch = _db.batch();
 
     attendanceByStudent.forEach((studentId, present) {
       final docId = 'att_${courseId}_${studentId}_$dayKey';
       final ref = _db.collection('attendance').doc(docId);
-      batch.set(
-        ref,
-        {
-          'studentId': studentId,
-          'courseId': courseId,
-          'date': Timestamp.fromDate(DateTime(date.year, date.month, date.day)),
-          'present': present,
-          'status': present ? 'present' : 'absent',
-          'markedBy': facultyId,
-          'createdAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(ref, {
+        'studentId': studentId,
+        'courseId': courseId,
+        'date': Timestamp.fromDate(DateTime(date.year, date.month, date.day)),
+        'present': present,
+        'status': present ? 'present' : 'absent',
+        'markedBy': facultyId,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
 
     await batch.commit();
@@ -433,7 +587,9 @@ class FacultyModuleService {
 
     final quizRef = _db.collection('quizzes').doc();
     final noticeRef = _db.collection('notifications').doc();
-    final endTime = DateTime.now().add(Duration(minutes: durationMinutes <= 0 ? 15 : durationMinutes));
+    final endTime = DateTime.now().add(
+      Duration(minutes: durationMinutes <= 0 ? 15 : durationMinutes),
+    );
     final batch = _db.batch();
 
     batch.set(quizRef, {
@@ -490,8 +646,8 @@ class FacultyModuleService {
     final audience = (userIds != null && userIds.isNotEmpty)
         ? 'users'
         : (courseId != null && courseId.trim().isNotEmpty)
-            ? 'course'
-            : 'all';
+        ? 'course'
+        : 'all';
 
     final doc = _db.collection('notifications').doc();
     await doc.set({
@@ -503,9 +659,13 @@ class FacultyModuleService {
       'route': '/student/dashboard?tab=notifications',
       'sourceId': doc.id,
       'sourceCollection': 'notifications',
-      if (courseId != null && courseId.trim().isNotEmpty) 'courseId': courseId.trim(),
+      if (courseId != null && courseId.trim().isNotEmpty)
+        'courseId': courseId.trim(),
       if (userIds != null && userIds.isNotEmpty)
-        'targetUserIds': userIds.where((id) => id.trim().isNotEmpty).map((id) => id.trim()).toList(),
+        'targetUserIds': userIds
+            .where((id) => id.trim().isNotEmpty)
+            .map((id) => id.trim())
+            .toList(),
       'createdBy': facultyId,
       'createdAt': FieldValue.serverTimestamp(),
       'read': false,
@@ -519,33 +679,44 @@ class FacultyModuleService {
   }) async {
     final courseDoc = await _db.collection('courses').doc(courseId).get();
     final courseData = courseDoc.data() ?? <String, dynamic>{};
-    final courseName = (courseData['courseName'] ?? courseData['course_name'] ?? courseData['title'] ?? courseId).toString();
-    final courseCode = (courseData['courseCode'] ?? courseData['course_code'] ?? courseData['code'] ?? courseId).toString();
-    final semester = (courseData['semester'] is num) ? (courseData['semester'] as num).toInt() : int.tryParse(courseData['semester']?.toString() ?? '') ?? 0;
-    final credits = (courseData['credits'] as num?)?.toInt() ?? int.tryParse(courseData['credits']?.toString() ?? '') ?? 0;
+    final courseName =
+        (courseData['courseName'] ??
+                courseData['course_name'] ??
+                courseData['title'] ??
+                courseId)
+            .toString();
+    final courseCode =
+        (courseData['courseCode'] ??
+                courseData['course_code'] ??
+                courseData['code'] ??
+                courseId)
+            .toString();
+    final semester = (courseData['semester'] is num)
+        ? (courseData['semester'] as num).toInt()
+        : int.tryParse(courseData['semester']?.toString() ?? '') ?? 0;
+    final credits =
+        (courseData['credits'] as num?)?.toInt() ??
+        int.tryParse(courseData['credits']?.toString() ?? '') ??
+        0;
 
     final batch = _db.batch();
     marksByStudent.forEach((studentId, marks) {
       final marksValue = marks.round().clamp(0, 100);
       final grade = gradeFromMarks(marksValue);
       final ref = _db.collection('results').doc('${courseId}_$studentId');
-      batch.set(
-        ref,
-        {
-          'studentId': studentId,
-          'courseId': courseId,
-          'courseName': courseName,
-          'courseCode': courseCode,
-          'semester': semester,
-          'credits': credits,
-          'marks': marksValue,
-          'grade': grade,
-          'gradePoint': gradePointForGrade(grade),
-          'uploadedBy': facultyId,
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(ref, {
+        'studentId': studentId,
+        'courseId': courseId,
+        'courseName': courseName,
+        'courseCode': courseCode,
+        'semester': semester,
+        'credits': credits,
+        'marks': marksValue,
+        'grade': grade,
+        'gradePoint': gradePointForGrade(grade),
+        'uploadedBy': facultyId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     });
     await batch.commit();
   }
@@ -561,9 +732,10 @@ class FacultyModuleService {
   List<List<T>> _chunk<T>(List<T> values, int size) {
     final output = <List<T>>[];
     for (var i = 0; i < values.length; i += size) {
-      output.add(values.sublist(i, i + size > values.length ? values.length : i + size));
+      output.add(
+        values.sublist(i, i + size > values.length ? values.length : i + size),
+      );
     }
     return output;
   }
-
 }

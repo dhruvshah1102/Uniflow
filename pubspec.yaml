@@ -49,6 +49,7 @@ dependencies:
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
   google_fonts: ^8.0.2
+  file_picker: ^8.1.4
 
 dev_dependencies:
   flutter_test:
