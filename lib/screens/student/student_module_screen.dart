@@ -1891,11 +1891,19 @@ class _CoursesTab extends StatelessWidget {
 
   Future<void> _openMaterial(BuildContext context, StudyMaterialDashboardItem material) async {
     final uri = Uri.tryParse(material.material.fileUrl);
-    if (uri == null || !await canLaunchUrl(uri)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open this material.')));
+    if (uri == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid link.')));
+      }
       return;
     }
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open this material.')));
+      }
+    }
   }
 
   @override
