@@ -1,0 +1,17 @@
+﻿   info - Parameter 'key' could be a super parameter - lib\core\router.dart:73:9 - use_super_parameters
+  error - The argument type 'CardTheme' can't be assigned to the parameter type 'CardThemeData?'.  - lib\core\theme\app_theme.dart:25:18 - argument_type_not_assignable
+warning - Unused import: 'package:flutter/foundation.dart' - lib\firebase_options.dart:2:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\main.dart:21:5 - avoid_print
+   info - Parameter 'key' could be a super parameter - lib\main.dart:28:9 - use_super_parameters
+   info - Use 'rethrow' to rethrow a caught exception - lib\providers\auth_provider.dart:84:7 - use_rethrow_when_possible
+   info - Parameter 'key' could be a super parameter - lib\screens\admin\admin_dashboard_screen.dart:6:9 - use_super_parameters
+warning - Unused import: 'package:go_router/go_router.dart' - lib\screens\auth\login_screen.dart:3:8 - unused_import
+   info - Parameter 'key' could be a super parameter - lib\screens\auth\login_screen.dart:9:9 - use_super_parameters
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\auth\login_screen.dart:171:59 - deprecated_member_use
+   info - Parameter 'key' could be a super parameter - lib\screens\faculty\faculty_dashboard_screen.dart:6:9 - use_super_parameters
+   info - Parameter 'key' could be a super parameter - lib\screens\student\student_dashboard_screen.dart:6:9 - use_super_parameters
+warning - The value of the local variable 'studentProfile' isn't used - lib\screens\student\student_dashboard_screen.dart:31:11 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\services\auth_service.dart:61:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\auth_service.dart:93:7 - avoid_print
+warning - The value of the field '_firestore' isn't used - lib\services\firestore_service.dart:153:27 - unused_field
+

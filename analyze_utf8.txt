@@ -1,0 +1,73 @@
+﻿   info - Parameter 'key' could be a super parameter - lib\core\router.dart:73:9 - use_super_parameters
+  error - Target of URI doesn't exist: 'app_colors.dart' - lib\core\theme\app_theme.dart:2:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'app_text_styles.dart' - lib\core\theme\app_theme.dart:3:8 - uri_does_not_exist
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:9:21 - undefined_identifier
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:10:32 - undefined_identifier
+  error - Undefined name 'AppTextStyles' - lib\core\theme\app_theme.dart:11:19 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:14:26 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:14:26 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:17:41 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:17:41 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:21:18 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:21:18 - undefined_identifier
+  error - The argument type 'CardTheme' can't be assigned to the parameter type 'CardThemeData?'.  - lib\core\theme\app_theme.dart:25:18 - argument_type_not_assignable
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:26:16 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:31:41 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:31:41 - undefined_identifier
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:37:20 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:49:47 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:49:47 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:53:47 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:53:47 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:57:47 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:57:47 - undefined_identifier
+  error - Undefined name 'AppTextStyles' - lib\core\theme\app_theme.dart:59:20 - undefined_identifier
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:59:55 - undefined_identifier
+  error - Undefined name 'AppTextStyles' - lib\core\theme\app_theme.dart:60:21 - undefined_identifier
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:60:56 - undefined_identifier
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:65:28 - undefined_identifier
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:66:28 - undefined_identifier
+  error - Undefined name 'AppTextStyles' - lib\core\theme\app_theme.dart:68:22 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:77:26 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:77:26 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:79:28 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:79:28 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:80:30 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:80:30 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:89:18 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:89:18 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:90:20 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:90:20 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:91:18 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:91:18 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:92:16 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:92:16 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:93:20 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:93:20 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:94:22 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:94:22 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:95:20 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:95:20 - undefined_identifier
+  error - Invalid constant value - lib\core\theme\app_theme.dart:96:18 - invalid_constant
+  error - Undefined name 'AppColors' - lib\core\theme\app_theme.dart:96:18 - undefined_identifier
+warning - Unused import: 'package:flutter/foundation.dart' - lib\firebase_options.dart:2:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\main.dart:21:5 - avoid_print
+   info - Parameter 'key' could be a super parameter - lib\main.dart:28:9 - use_super_parameters
+  error - Target of URI doesn't exist: 'auth_service.dart' - lib\providers\auth_provider.dart:2:8 - uri_does_not_exist
+  error - Undefined class 'AuthService' - lib\providers\auth_provider.dart:9:9 - undefined_class
+  error - The method 'AuthService' isn't defined for the type 'AuthProvider' - lib\providers\auth_provider.dart:9:36 - undefined_method
+   info - Use 'rethrow' to rethrow a caught exception - lib\providers\auth_provider.dart:84:7 - use_rethrow_when_possible
+   info - Parameter 'key' could be a super parameter - lib\screens\admin\admin_dashboard_screen.dart:6:9 - use_super_parameters
+warning - Unused import: 'package:go_router/go_router.dart' - lib\screens\auth\login_screen.dart:3:8 - unused_import
+   info - Parameter 'key' could be a super parameter - lib\screens\auth\login_screen.dart:9:9 - use_super_parameters
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\auth\login_screen.dart:171:59 - deprecated_member_use
+   info - Parameter 'key' could be a super parameter - lib\screens\faculty\faculty_dashboard_screen.dart:6:9 - use_super_parameters
+warning - The value of the local variable 'name' isn't used - lib\screens\faculty\faculty_dashboard_screen.dart:34:11 - unused_local_variable
+   info - Parameter 'key' could be a super parameter - lib\screens\student\student_dashboard_screen.dart:6:9 - use_super_parameters
+warning - The value of the local variable 'studentProfile' isn't used - lib\screens\student\student_dashboard_screen.dart:31:11 - unused_local_variable
+warning - The value of the local variable 'name' isn't used - lib\screens\student\student_dashboard_screen.dart:33:11 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\services\auth_service.dart:61:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\auth_service.dart:93:7 - avoid_print
+warning - The value of the field '_firestore' isn't used - lib\services\firestore_service.dart:153:27 - unused_field
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+
