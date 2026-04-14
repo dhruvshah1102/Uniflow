@@ -463,7 +463,7 @@ class AdminModuleService {
     }
 
     if (docsToDelete.isNotEmpty) {
-      await _deleteRefs(docsToDelete.toList());
+      await this._deleteRefs(docsToDelete.toList());
     }
 
     // Keep registration forms clean if they were tied to a deleted faculty-created course.
@@ -851,10 +851,10 @@ class AdminModuleService {
       for (final doc in formsSnap.docs) {
         final data = doc.data();
         final formCourseIds = <String>[
-          ..._stringList(data['availableCourses']),
-          ..._stringList(data['availableCourseIds']),
-          ..._stringList(data['backlogCourses']),
-          ..._stringList(data['backlogCourseIds']),
+          ...AdminModuleService._stringList(data['availableCourses']),
+          ...AdminModuleService._stringList(data['availableCourseIds']),
+          ...AdminModuleService._stringList(data['backlogCourses']),
+          ...AdminModuleService._stringList(data['backlogCourseIds']),
         ];
         for (final rawId in formCourseIds) {
           if (courseIds.contains(rawId)) {
@@ -955,14 +955,14 @@ class AdminModuleService {
     final assignmentIds = assignmentsSnap.docs.map((doc) => doc.id).toList();
     if (assignmentIds.isNotEmpty) {
       await deleteAssignmentSubmissions(assignmentIds);
-      await _deleteRefs(assignmentsSnap.docs.map((doc) => doc.reference).toList());
+      await this._deleteRefs(assignmentsSnap.docs.map((doc) => doc.reference).toList());
     }
 
     final quizzesSnap = await _db.collection('quizzes').where('course_id', isEqualTo: normalizedCourseId).get();
     final quizIds = quizzesSnap.docs.map((doc) => doc.id).toList();
     if (quizIds.isNotEmpty) {
       await deleteQuizChildren(quizIds);
-      await _deleteRefs(quizzesSnap.docs.map((doc) => doc.reference).toList());
+      await this._deleteRefs(quizzesSnap.docs.map((doc) => doc.reference).toList());
     }
 
     await deleteByCourseField('enrollments');
@@ -981,16 +981,16 @@ class AdminModuleService {
       }
     }
     if (registrationsToDelete.isNotEmpty) {
-      await _deleteRefs(registrationsToDelete.toList());
+      await this._deleteRefs(registrationsToDelete.toList());
     }
 
     final formsSnap = await _db.collection('registrationForms').get();
     for (final doc in formsSnap.docs) {
       final data = doc.data();
-      final availableCourses = _stringList(data['availableCourses']);
-      final availableCourseIds = _stringList(data['availableCourseIds']);
-      final backlogCourses = _stringList(data['backlogCourses']);
-      final backlogCourseIds = _stringList(data['backlogCourseIds']);
+      final availableCourses = AdminModuleService._stringList(data['availableCourses']);
+      final availableCourseIds = AdminModuleService._stringList(data['availableCourseIds']);
+      final backlogCourses = AdminModuleService._stringList(data['backlogCourses']);
+      final backlogCourseIds = AdminModuleService._stringList(data['backlogCourseIds']);
 
       final updatedAvailableCourses = availableCourses.where((id) => id != normalizedCourseId).toList();
       final updatedAvailableCourseIds = availableCourseIds.where((id) => id != normalizedCourseId).toList();

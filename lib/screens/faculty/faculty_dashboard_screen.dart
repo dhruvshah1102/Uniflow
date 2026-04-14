@@ -279,6 +279,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 department: facultyProfile?.department ?? '-',
                 designation: facultyProfile?.designation ?? '-',
                 employeeId: facultyProfile?.employeeId ?? '-',
+                courses: data.courses,
                 onLogout: () => auth.logout(),
               ),
             ],
@@ -2340,6 +2341,7 @@ class _FacultyProfileTab extends StatelessWidget {
   final String department;
   final String designation;
   final String employeeId;
+  final List<CourseModel> courses;
   final VoidCallback onLogout;
 
   const _FacultyProfileTab({
@@ -2348,6 +2350,7 @@ class _FacultyProfileTab extends StatelessWidget {
     required this.department,
     required this.designation,
     required this.employeeId,
+    required this.courses,
     required this.onLogout,
   });
 
@@ -2450,6 +2453,94 @@ class _FacultyProfileTab extends StatelessWidget {
               _FieldRow(label: 'Department', value: department),
               _FieldRow(label: 'Employee ID', value: employeeId),
               const _FieldRow(label: 'Working Status', value: 'Active'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Teaching History',
+                style: TextStyle(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 28,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Semester 5 demo courses attached to this faculty profile.',
+                style: const TextStyle(color: AppColors.ink700, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              if (courses.where((course) => course.semesterNumber == 5).isNotEmpty)
+                ...courses
+                    .where((course) => course.semesterNumber == 5)
+                    .map(
+                      (course) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceWarm,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryDark,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  course.code.isNotEmpty
+                                      ? course.code.substring(0, course.code.length >= 2 ? 2 : course.code.length)
+                                      : '--',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      course.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.ink900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${course.code} • ${course.semester} • ${course.department.isEmpty ? 'CSE' : course.department}',
+                                      style: const TextStyle(
+                                        color: AppColors.ink500,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+              if (courses.where((course) => course.semesterNumber == 5).isEmpty)
+                const Text(
+                  'No Semester 5 courses are linked to this profile right now.',
+                  style: TextStyle(color: AppColors.ink500),
+                ),
             ],
           ),
         ),

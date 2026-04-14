@@ -136,6 +136,12 @@ class AuthProvider extends ChangeNotifier {
         await _fetchUserData(uid);
       }
 
+      if (normalizedRole == 'faculty' &&
+          normalizedEmail == 'faculty1@iiitn.ac.in') {
+        await _authService.ensureFacultyDemoData(uid: uid, email: email);
+        await _fetchUserData(uid);
+      }
+
       return currentUser;
     } catch (e) {
       error = 'Invalid email or password';
