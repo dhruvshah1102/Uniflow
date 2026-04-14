@@ -220,6 +220,7 @@ class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen>
             );
             final hasActiveRegistration = data.activeRegistration != null;
             final canSubmit = !_submitting &&
+                data.registrationOpen &&
                 !hasActiveRegistration &&
                 _selectedCourseIds.isNotEmpty &&
                 totalCredits <= data.creditLimit;
@@ -240,58 +241,68 @@ class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen>
                     body:
                         'Current semester: ${data.currentSemester} | Next semester: ${data.targetSemester} | Credit limit: ${data.creditLimit}',
                   ),
+                  if (!data.registrationOpen) ...[
+                    const SizedBox(height: 16),
+                    const _InfoBanner(
+                      title: 'Registration Closed',
+                      body: 'There is no active admin registration form for your next semester right now. Students can only register while the admin form is active.',
+                    ),
+                  ],
                   const SizedBox(height: 16),
-                  _SummaryCard(
-                    selectedCourses: data.availableCourses
-                        .where((course) => _selectedCourseIds.contains(course.id))
-                        .toList(),
-                    backlogCourses: data.backlogCourses
-                        .where((course) => _backlogCourseIds.contains(course.id))
-                        .toList(),
-                    totalCredits: totalCredits,
-                    creditLimit: data.creditLimit,
-                  ),
+                  if (data.registrationOpen)
+                    _SummaryCard(
+                      selectedCourses: data.availableCourses
+                          .where((course) => _selectedCourseIds.contains(course.id))
+                          .toList(),
+                      backlogCourses: data.backlogCourses
+                          .where((course) => _backlogCourseIds.contains(course.id))
+                          .toList(),
+                      totalCredits: totalCredits,
+                      creditLimit: data.creditLimit,
+                    ),
                   if (hasActiveRegistration) ...[
                     const SizedBox(height: 16),
                     _PendingCard(record: data.activeRegistration!),
                   ],
                   const SizedBox(height: 16),
-                  _CourseSelectionSection(
-                    title: 'Available Next Semester Courses',
-                    subtitle: 'These courses share the same 24-credit limit with backlog choices.',
-                    courses: data.availableCourses,
-                    selectedIds: _selectedCourseIds,
-                    enabled: !hasActiveRegistration && !_submitting,
-                    onChanged: (courseId, selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedCourseIds.add(courseId);
-                          _backlogCourseIds.remove(courseId);
-                        } else {
-                          _selectedCourseIds.remove(courseId);
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _CourseSelectionSection(
-                    title: 'Backlog Courses',
-                    subtitle: 'Choose backlog subjects instead of extra new courses within the same 24-credit limit.',
-                    courses: data.backlogCourses,
-                    selectedIds: _backlogCourseIds,
-                    enabled: !hasActiveRegistration && !_submitting,
-                    onChanged: (courseId, selected) {
-                      setState(() {
-                        if (selected) {
-                          _backlogCourseIds.add(courseId);
-                          _selectedCourseIds.remove(courseId);
-                        } else {
-                          _backlogCourseIds.remove(courseId);
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                  if (data.registrationOpen) ...[
+                    _CourseSelectionSection(
+                      title: 'Available Next Semester Courses',
+                      subtitle: 'These courses share the same 24-credit limit with backlog choices.',
+                      courses: data.availableCourses,
+                      selectedIds: _selectedCourseIds,
+                      enabled: !hasActiveRegistration && !_submitting,
+                      onChanged: (courseId, selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedCourseIds.add(courseId);
+                            _backlogCourseIds.remove(courseId);
+                          } else {
+                            _selectedCourseIds.remove(courseId);
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _CourseSelectionSection(
+                      title: 'Backlog Courses',
+                      subtitle: 'Choose backlog subjects instead of extra new courses within the same 24-credit limit.',
+                      courses: data.backlogCourses,
+                      selectedIds: _backlogCourseIds,
+                      enabled: !hasActiveRegistration && !_submitting,
+                      onChanged: (courseId, selected) {
+                        setState(() {
+                          if (selected) {
+                            _backlogCourseIds.add(courseId);
+                            _selectedCourseIds.remove(courseId);
+                          } else {
+                            _backlogCourseIds.remove(courseId);
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   _ValidationCard(
                     totalCredits: totalCredits,
                     creditLimit: data.creditLimit,

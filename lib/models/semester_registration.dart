@@ -100,6 +100,7 @@ class SemesterRegistrationContext {
   final int currentSemester;
   final int targetSemester;
   final int creditLimit;
+  final bool registrationOpen;
   final List<RegistrationCourseOption> availableCourses;
   final List<RegistrationCourseOption> backlogCourses;
   final List<String> enrolledCourseIds;
@@ -113,6 +114,7 @@ class SemesterRegistrationContext {
     required this.currentSemester,
     required this.targetSemester,
     required this.creditLimit,
+    required this.registrationOpen,
     required this.availableCourses,
     required this.backlogCourses,
     required this.enrolledCourseIds,

@@ -17,6 +17,7 @@ import '../models/student_model.dart';
 import '../models/user_model.dart';
 import 'admin_module_service.dart';
 import 'dart:typed_data';
+import 'semester_registration_service.dart';
 import 'storage_service.dart';
 
 class StudentDashboardService {
@@ -113,6 +114,14 @@ class StudentDashboardService {
       candidateIds: candidateIds,
       courseIds: allCourseIds,
     );
+    final registrationOpen = latestSemester != null && latestSemester > 0
+        ? await SemesterRegistrationService.instance.isRegistrationOpen(
+            semester: latestSemester + 1,
+            department: studentProfile?.department.trim().isNotEmpty == true
+                ? studentProfile!.department.trim()
+                : user.department.trim(),
+          )
+        : false;
     final nextSemesterRegistration = await _fetchNextSemesterRegistration(
       candidateIds: candidateIds,
       currentSemester: latestSemester,
@@ -206,6 +215,7 @@ class StudentDashboardService {
           .toList(),
       nextDeadline: pendingTasks.isEmpty ? null : pendingTasks.first.dueDate,
       nextSemesterRegistration: nextSemesterRegistration,
+      registrationOpen: registrationOpen,
     );
   }
 

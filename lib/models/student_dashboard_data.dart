@@ -23,6 +23,7 @@ class StudentDashboardData {
   final List<DashboardNotificationItem> notifications;
   final DateTime? nextDeadline;
   final SemesterRegistrationRecord? nextSemesterRegistration;
+  final bool registrationOpen;
 
   const StudentDashboardData({
     required this.user,
@@ -38,6 +39,7 @@ class StudentDashboardData {
     required this.notifications,
     required this.nextDeadline,
     required this.nextSemesterRegistration,
+    required this.registrationOpen,
   });
 
   int get unreadNotifications =>
@@ -107,6 +109,7 @@ class StudentDashboardData {
               'selectedCourseNames': nextSemesterRegistration!.selectedCourseNames,
               'backlogCourseNames': nextSemesterRegistration!.backlogCourseNames,
             },
+      'registrationOpen': registrationOpen,
     };
   }
 }

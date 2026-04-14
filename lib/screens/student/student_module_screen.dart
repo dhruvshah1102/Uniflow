@@ -17,6 +17,7 @@ import '../../providers/auth_provider.dart';
 import 'semester_registration_screen.dart';
 import 'assignment_details_screen.dart';
 import '../../services/student_dashboard_service.dart';
+import '../../services/semester_registration_service.dart';
 import 'course_detail_screen.dart' as course_detail;
 
 
@@ -106,6 +107,23 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   }
 
   Future<void> _openRegistrationScreen() async {
+    final auth = context.read<AuthProvider>();
+    final student = auth.studentProfile;
+    if (student == null) return;
+
+    final open = await SemesterRegistrationService.instance.isRegistrationOpen(
+      semester: student.semester + 1,
+      department: student.department,
+    );
+    if (!context.mounted) return;
+
+    if (!open) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration is closed right now.')),
+      );
+      return;
+    }
+
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => const SemesterRegistrationScreen(),
@@ -2178,10 +2196,12 @@ class _UpcomingCourseCard extends StatelessWidget {
 
 class _RegistrationStatusCard extends StatelessWidget {
   final SemesterRegistrationRecord? registration;
+  final bool registrationOpen;
   final VoidCallback onOpenRegistration;
 
   const _RegistrationStatusCard({
     required this.registration,
+    required this.registrationOpen,
     required this.onOpenRegistration,
   });
 
@@ -2214,9 +2234,9 @@ class _RegistrationStatusCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: onOpenRegistration,
+                onPressed: registrationOpen ? onOpenRegistration : null,
                 icon: const Icon(Icons.event_available_outlined),
-                label: const Text('Register for Next Semester'),
+                label: Text(registrationOpen ? 'Register for Next Semester' : 'Registration Closed'),
               ),
             ),
           ] else ...[
@@ -2696,18 +2716,21 @@ class _ProfileTab extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        const _SectionHeader(
-          eyebrow: 'REGISTRATION',
-          title: 'Next Semester Registration',
-          subtitle: 'Submit or track your registration for upcoming academic terms.',
-        ),
-        const SizedBox(height: 12),
-        _RegistrationStatusCard(
-          registration: data.nextSemesterRegistration,
-          onOpenRegistration: onOpenRegistration,
-        ),
-        const SizedBox(height: 24),
+        if (data.registrationOpen || data.nextSemesterRegistration != null) ...[
+          const SizedBox(height: 24),
+          const _SectionHeader(
+            eyebrow: 'REGISTRATION',
+            title: 'Next Semester Registration',
+            subtitle: 'Submit or track your registration for upcoming academic terms.',
+          ),
+          const SizedBox(height: 12),
+          _RegistrationStatusCard(
+            registration: data.nextSemesterRegistration,
+            registrationOpen: data.registrationOpen,
+            onOpenRegistration: onOpenRegistration,
+          ),
+          const SizedBox(height: 24),
+        ],
         ElevatedButton.icon(
           onPressed: onLogout,
           icon: const Icon(Icons.logout),

@@ -27,16 +27,6 @@ class SemesterRegistrationService {
     );
     await AdminModuleService.instance.ensureCourseCatalog();
     final courseOptions = await _fetchCourseOptions();
-    final semesterCourseIds = _courseIdsForSemester(
-      courseOptions: courseOptions,
-      semester: currentSemester + 1,
-      department: studentDepartment,
-    );
-    final backlogCourseIds = _courseIdsForBacklog(
-      courseOptions: courseOptions,
-      semester: currentSemester + 1,
-      department: studentDepartment,
-    );
     final enrollments = await _fetchEnrollmentCourseIds(studentId);
     final upcomingEnrollments = await _fetchUpcomingEnrollmentCourseIds(studentId);
     final registrations = await _fetchRegistrations(studentId);
@@ -45,6 +35,7 @@ class SemesterRegistrationService {
       department: studentDepartment,
     );
     final targetSemester = activeForm?.semester ?? currentSemester + 1;
+    final registrationOpen = activeForm != null;
 
     final activeRegistration = registrations
         .where((record) => record.targetSemester == targetSemester && (record.status == 'pending' || record.status == 'approved'))
@@ -53,28 +44,36 @@ class SemesterRegistrationService {
           return record.createdAt.compareTo(previous.createdAt) > 0 ? record : previous;
         });
 
-    final allowedCourseIds = _effectiveAllowedIds(
-      preferredIds: activeForm?.availableCourseIds ?? const <String>[],
-      fallbackIds: semesterCourseIds,
-    );
-    final allowedBacklogIds = _effectiveAllowedIds(
-      preferredIds: activeForm?.backlogCourseIds ?? const <String>[],
-      fallbackIds: backlogCourseIds,
-    );
-    final availableCourses = courseOptions
-        .where((course) => course.semester == targetSemester && _matchesDepartment(course.department, studentDepartment))
-        .where((course) => allowedCourseIds.isEmpty || allowedCourseIds.contains(course.id))
-        .where((course) => !enrollments.contains(course.id))
-        .where((course) => !upcomingEnrollments.contains(course.id))
-        .toList()
-      ..sort((a, b) => a.courseCode.toLowerCase().compareTo(b.courseCode.toLowerCase()));
+    final allowedCourseIds = registrationOpen
+        ? activeForm!.availableCourseIds.toSet()
+        : <String>{};
+    final allowedBacklogIds = registrationOpen
+        ? activeForm!.backlogCourseIds.toSet()
+        : <String>{};
+    final availableCourses = registrationOpen
+        ? (() {
+            final list = courseOptions
+                .where((course) => course.semester == targetSemester && _matchesDepartment(course.department, studentDepartment))
+                .where((course) => allowedCourseIds.isEmpty || allowedCourseIds.contains(course.id))
+                .where((course) => !enrollments.contains(course.id))
+                .where((course) => !upcomingEnrollments.contains(course.id))
+                .toList();
+            list.sort((a, b) => a.courseCode.toLowerCase().compareTo(b.courseCode.toLowerCase()));
+            return list;
+          })()
+        : <RegistrationCourseOption>[];
 
-    final backlogCourses = courseOptions
-        .where((course) => course.semester > 0 && course.semester < targetSemester && _matchesDepartment(course.department, studentDepartment))
-        .where((course) => allowedBacklogIds.isEmpty || allowedBacklogIds.contains(course.id))
-        .where((course) => !upcomingEnrollments.contains(course.id))
-        .toList()
-      ..sort((a, b) => a.courseCode.toLowerCase().compareTo(b.courseCode.toLowerCase()));
+    final backlogCourses = registrationOpen
+        ? (() {
+            final list = courseOptions
+                .where((course) => course.semester > 0 && course.semester < targetSemester && _matchesDepartment(course.department, studentDepartment))
+                .where((course) => allowedBacklogIds.isEmpty || allowedBacklogIds.contains(course.id))
+                .where((course) => !upcomingEnrollments.contains(course.id))
+                .toList();
+            list.sort((a, b) => a.courseCode.toLowerCase().compareTo(b.courseCode.toLowerCase()));
+            return list;
+          })()
+        : <RegistrationCourseOption>[];
 
     return SemesterRegistrationContext(
       studentId: studentId,
@@ -83,6 +82,7 @@ class SemesterRegistrationService {
       currentSemester: currentSemester,
       targetSemester: targetSemester,
       creditLimit: creditLimit,
+      registrationOpen: registrationOpen,
       availableCourses: availableCourses,
       backlogCourses: backlogCourses,
       enrolledCourseIds: enrollments,
@@ -171,6 +171,14 @@ class SemesterRegistrationService {
     return streamRegistrations().map((records) => records.where((record) => record.status == 'pending').toList());
   }
 
+  Future<bool> isRegistrationOpen({
+    required int semester,
+    required String department,
+  }) async {
+    final form = await _fetchActiveForm(semester: semester, department: department);
+    return form != null;
+  }
+
   Future<String> submitRegistration({
     required String studentId,
     required String studentName,
@@ -185,8 +193,15 @@ class SemesterRegistrationService {
     final normalizedSelected = _normalizeIds(selectedCourseIds);
     final normalizedBacklog = _normalizeIds(backlogCourseIds);
     final allowedForm = await _fetchActiveForm(semester: targetSemester, department: '');
-    final allowedCourseIds = allowedForm?.availableCourseIds.toSet() ?? await _fetchAllowedCourseIdsForSemester(targetSemester);
-    final allowedBacklogIds = allowedForm?.backlogCourseIds.toSet() ?? <String>{};
+    if (allowedForm == null) {
+      throw Exception('Registration is currently closed for this semester.');
+    }
+    if (allowedForm.semester != targetSemester) {
+      throw Exception('This registration form is not open for the selected semester.');
+    }
+
+    final allowedCourseIds = allowedForm.availableCourseIds.toSet();
+    final allowedBacklogIds = allowedForm.backlogCourseIds.toSet();
 
     if (normalizedSelected.isEmpty) {
       throw Exception('Please select at least one course.');
@@ -411,18 +426,6 @@ class SemesterRegistrationService {
         .map((course) => course.id)
         .toSet()
         .toList();
-  }
-
-  Set<String> _effectiveAllowedIds({
-    required List<String> preferredIds,
-    required List<String> fallbackIds,
-  }) {
-    final preferred = _normalizeIds(preferredIds);
-    final fallback = _normalizeIds(fallbackIds);
-    if (preferred.isEmpty || preferred.length < fallback.length) {
-      return fallback.toSet();
-    }
-    return preferred.toSet();
   }
 
   Future<List<String>> _fetchEnrollmentCourseIds(String studentId) async {
