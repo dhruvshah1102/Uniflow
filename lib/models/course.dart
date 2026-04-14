@@ -32,29 +32,35 @@ class CourseModel {
     final semesterNumber = semesterValue is int
         ? (semesterValue >= 1 && semesterValue <= 12 ? semesterValue : 0)
         : semesterValue is num
-            ? (() {
-                final value = semesterValue.toInt();
-                return value >= 1 && value <= 12 ? value : 0;
-              })()
-            : (() {
-                final raw = semesterValue?.toString() ?? '';
-                final exact = int.tryParse(raw);
-                if (exact != null && exact >= 1 && exact <= 12) return exact;
-                final digits = int.tryParse(raw.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-                return digits >= 1 && digits <= 12 ? digits : 0;
-              })();
+        ? (() {
+            final value = semesterValue.toInt();
+            return value >= 1 && value <= 12 ? value : 0;
+          })()
+        : (() {
+            final raw = semesterValue?.toString() ?? '';
+            final exact = int.tryParse(raw);
+            if (exact != null && exact >= 1 && exact <= 12) return exact;
+            final digits =
+                int.tryParse(raw.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+            return digits >= 1 && digits <= 12 ? digits : 0;
+          })();
     return CourseModel(
       courseId: (data['courseId'] ?? data['courseID'] ?? documentId).toString(),
-      title: (data['courseName'] ?? data['title'] ?? data['course_name'] ?? '').toString(),
-      code: (data['courseCode'] ?? data['code'] ?? data['course_code'] ?? '').toString(),
+      title: (data['courseName'] ?? data['title'] ?? data['course_name'] ?? '')
+          .toString(),
+      code: (data['courseCode'] ?? data['code'] ?? data['course_code'] ?? '')
+          .toString(),
       description: (data['description'] ?? '').toString(),
       credits: data['credits'] ?? 0,
       facultyId: (data['facultyId'] ?? data['faculty_id'] ?? '').toString(),
-      facultyName: (data['facultyName'] ?? data['faculty_name'] ?? '').toString(),
+      facultyName: (data['facultyName'] ?? data['faculty_name'] ?? '')
+          .toString(),
       semester: semesterNumber > 0 ? 'Semester $semesterNumber' : 'Semester -',
       semesterNumber: semesterNumber,
       department: (data['department'] ?? '').toString(),
-      createdAt: data['createdAt'] is Timestamp ? data['createdAt'] : Timestamp.now(),
+      createdAt: data['createdAt'] is Timestamp
+          ? data['createdAt']
+          : Timestamp.now(),
     );
   }
 

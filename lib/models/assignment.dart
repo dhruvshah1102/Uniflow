@@ -8,6 +8,7 @@ class AssignmentModel {
   final Timestamp dueDate;
   final String createdBy; // faculty UID
   final String status;
+  final int totalMarks;
   final Timestamp createdAt;
 
   AssignmentModel({
@@ -18,6 +19,7 @@ class AssignmentModel {
     required this.dueDate,
     required this.createdBy,
     this.status = 'pending',
+    this.totalMarks = 100,
     Timestamp? createdAt,
   }) : createdAt = createdAt ?? Timestamp.now();
 
@@ -30,6 +32,7 @@ class AssignmentModel {
       dueDate: data['dueDate'] ?? Timestamp.now(),
       createdBy: data['createdBy'] ?? '',
       status: data['status'] ?? 'pending',
+      totalMarks: data['total_marks'] ?? data['totalMarks'] ?? 100,
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
@@ -42,6 +45,7 @@ class AssignmentModel {
       'dueDate': dueDate,
       'createdBy': createdBy,
       'status': status,
+      'total_marks': totalMarks,
       'createdAt': createdAt,
     };
   }

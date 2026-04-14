@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +6,8 @@ import '../../core/constants/app_colors.dart';
 import '../../models/academic_result.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/academic_results_service.dart';
+import '../../services/transcript_service.dart';
+import '../../services/pdf_helper.dart';
 
 class StudentGradesScreen extends StatelessWidget {
   const StudentGradesScreen({super.key});
@@ -23,7 +26,7 @@ class StudentGradesScreen extends StatelessWidget {
     }
 
     return StreamBuilder<StudentAcademicRecord>(
-      stream: AcademicResultsService.instance.watchStudentAcademicRecord(
+      stream: TranscriptService.instance.watchComprehensiveTranscript(
         studentId: student.userId,
         currentSemester: student.semester,
       ),
@@ -173,6 +176,38 @@ class _TranscriptView extends StatelessWidget {
               child: _SemesterCard(summary: semester),
             ),
           ),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              final auth = context.read<AuthProvider>();
+              final user = auth.currentUser;
+              final student = auth.studentProfile;
+              if (user != null && student != null) {
+                 await PdfHelper.generateTranscriptPdf(
+                   student: student,
+                   user: user,
+                   record: record,
+                 );
+                 ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Transcript downloaded/opened.')),
+                 );
+              }
+            },
+            icon: const Icon(Icons.download),
+            label: const Text('Download Transcript'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }

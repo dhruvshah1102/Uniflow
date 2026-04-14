@@ -9,11 +9,14 @@ import '../models/notification.dart';
 import '../models/quiz_model.dart';
 import '../models/quiz_question_model.dart';
 import '../models/quiz_submission_model.dart';
+import '../models/submission_model.dart';
 import '../models/study_material.dart';
 import '../models/semester_registration.dart';
 import '../models/student_dashboard_data.dart';
 import '../models/student_model.dart';
 import '../models/user_model.dart';
+import 'dart:typed_data';
+import 'storage_service.dart';
 
 class StudentDashboardService {
   StudentDashboardService._privateConstructor();
@@ -157,6 +160,7 @@ class StudentDashboardService {
       quizSubmissions: quizSubmissions,
       studyMaterials: studyMaterials,
       notifications: notifications
+          .where((n) => n.title != 'Welcome to UniFlow')
           .map((notification) => DashboardNotificationItem(notification: notification))
           .toList(),
       nextDeadline: pendingTasks.isEmpty ? null : pendingTasks.first.dueDate,
@@ -586,6 +590,52 @@ class StudentDashboardService {
       },
       SetOptions(merge: true),
     );
+  }
+
+  Future<SubmissionModel?> fetchAssignmentSubmissionForStudent({
+    required String assignmentId,
+    required String studentId,
+  }) async {
+    final snap = await _db
+        .collection('submissions')
+        .where('assignment_id', isEqualTo: assignmentId)
+        .where('student_id', isEqualTo: studentId)
+        .get();
+
+    if (snap.docs.isEmpty) return null;
+    return SubmissionModel.fromMap(snap.docs.first.data(), snap.docs.first.id);
+  }
+
+  Future<void> submitAssignment({
+    required String assignmentId,
+    required String studentId,
+    required String courseId,
+    required String fileName,
+    required List<int> fileBytes,
+  }) async {
+    final existing = await fetchAssignmentSubmissionForStudent(
+      assignmentId: assignmentId,
+      studentId: studentId,
+    );
+
+    if (existing != null) {
+      throw Exception('You have already submitted this assignment.');
+    }
+
+    final upload = await StorageService.instance.uploadStudyMaterial(
+      bytes: Uint8List.fromList(fileBytes),
+      fileName: fileName,
+      courseId: courseId,
+      facultyId: studentId, // Using facultyId parameter for student doc folder path in this bucket instance
+    );
+
+    await _db.collection('submissions').doc().set({
+      'assignment_id': assignmentId,
+      'student_id': studentId,
+      'file_url': upload.publicUrl,
+      'marks_obtained': null,
+      'submitted_at': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<List<NotificationModel>> _fetchNotifications({

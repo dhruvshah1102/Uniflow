@@ -14,14 +14,15 @@ import '../../models/quiz_submission_model.dart';
 import '../../models/student_dashboard_data.dart';
 import '../../providers/auth_provider.dart';
 import 'semester_registration_screen.dart';
+import 'assignment_details_screen.dart';
 import '../../services/student_dashboard_service.dart';
+import 'course_detail_screen.dart' as course_detail;
+
 
 enum _StudentTab {
-  dashboard,
   courses,
   attendance,
   grades,
-  tasks,
   notifications,
   profile,
 }
@@ -34,14 +35,12 @@ _StudentTab _studentTabFromQuery(String? tab) {
       return _StudentTab.attendance;
     case 'grades':
       return _StudentTab.grades;
-    case 'tasks':
-      return _StudentTab.tasks;
     case 'notifications':
       return _StudentTab.notifications;
     case 'profile':
       return _StudentTab.profile;
     default:
-      return _StudentTab.dashboard;
+      return _StudentTab.profile;
   }
 }
 
@@ -57,7 +56,7 @@ class StudentDashboardScreen extends StatefulWidget {
 class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   final StudentDashboardService _service = StudentDashboardService.instance;
   Stream<StudentDashboardData>? _stream;
-  _StudentTab _tab = _StudentTab.dashboard;
+  _StudentTab _tab = _StudentTab.profile;
 
   @override
   void initState() {
@@ -112,16 +111,12 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
 
   String get _title {
     switch (_tab) {
-      case _StudentTab.dashboard:
-        return 'Student Dashboard';
       case _StudentTab.courses:
         return 'Courses';
       case _StudentTab.attendance:
         return 'Attendance';
       case _StudentTab.grades:
         return 'Grades & Transcript';
-      case _StudentTab.tasks:
-        return 'Quizzes / Assignments';
       case _StudentTab.notifications:
         return 'Notifications';
       case _StudentTab.profile:
@@ -217,22 +212,18 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           return IndexedStack(
             index: _tab.index,
             children: [
-              _DashboardTab(
-                data: data,
-                onOpenTab: _switchTab,
-                onRefresh: _reload,
-              ),
               _CoursesTab(
                 data: data,
                 onOpenRegistration: _openRegistrationScreen,
               ),
               _AttendanceTab(data: data),
               const StudentGradesScreen(),
-              _TasksTab(data: data),
               _NotificationsTab(data: data),
               _ProfileTab(
                 data: data,
                 onLogout: _logout,
+                onOpenCourses: () => _switchTab(_StudentTab.courses),
+                onOpenRegistration: _openRegistrationScreen,
               ),
             ],
           );
@@ -260,11 +251,9 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           showUnselectedLabels: true,
           onTap: (index) => setState(() => _tab = _StudentTab.values[index]),
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
             BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), label: 'Courses'),
             BottomNavigationBarItem(icon: Icon(Icons.timeline_outlined), label: 'Attendance'),
             BottomNavigationBarItem(icon: Icon(Icons.grade_outlined), label: 'Grades'),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Tasks'),
             BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), label: 'Notices'),
             BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
           ],
@@ -393,11 +382,7 @@ class _DashboardTab extends StatelessWidget {
                 icon: Icons.check_circle_outline,
                 onTap: () => onOpenTab(_StudentTab.attendance),
               ),
-              _ActionPill(
-                label: 'Tasks',
-                icon: Icons.assignment_outlined,
-                onTap: () => onOpenTab(_StudentTab.tasks),
-              ),
+
               _ActionPill(
                 label: 'Notices',
                 icon: Icons.campaign_outlined,
@@ -1447,8 +1432,13 @@ class _FeaturedTaskCard extends StatelessWidget {
             width: 150,
             child: ElevatedButton(
               onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Quiz / assignment action is not wired yet.')),
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AssignmentDetailsScreen(
+                      assignment: task.assignment,
+                      courseCode: task.courseCode,
+                    ),
+                  ),
                 );
               },
               child: const Text('Start Now'),
@@ -1474,6 +1464,16 @@ class _TaskFeatureCard extends StatelessWidget {
       accentColor: statusColor,
       child: ListTile(
         contentPadding: EdgeInsets.zero,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => AssignmentDetailsScreen(
+                assignment: task.assignment,
+                courseCode: task.courseCode,
+              ),
+            ),
+          );
+        },
         leading: CircleAvatar(
           backgroundColor: statusColor.withOpacity(0.12),
           child: Icon(task.isOverdue ? Icons.warning_amber_outlined : Icons.assignment_outlined, color: statusColor),
@@ -1602,16 +1602,16 @@ class _MaterialDownloadCard extends StatelessWidget {
   }
 }
 
-class _QuizAttemptScreen extends StatefulWidget {
+class QuizAttemptScreen extends StatefulWidget {
   final QuizDashboardItem quiz;
 
-  const _QuizAttemptScreen({required this.quiz});
+  const QuizAttemptScreen({required this.quiz});
 
   @override
-  State<_QuizAttemptScreen> createState() => _QuizAttemptScreenState();
+  State<QuizAttemptScreen> createState() => QuizAttemptScreenState();
 }
 
-class _QuizAttemptScreenState extends State<_QuizAttemptScreen> {
+class QuizAttemptScreenState extends State<QuizAttemptScreen> {
   final StudentDashboardService _service = StudentDashboardService.instance;
   final Map<String, String> _answers = {};
   bool _submitting = false;
@@ -1725,102 +1725,163 @@ class _QuizAttemptScreenState extends State<_QuizAttemptScreen> {
   }
 }
 
-class _AnnouncementCard extends StatelessWidget {
+class _AnnouncementCard extends StatefulWidget {
   final DashboardNotificationItem notification;
-
   const _AnnouncementCard({required this.notification});
 
-  String? _routeForNotification() {
-    final explicit = notification.notification.route?.trim();
-    if (explicit != null && explicit.isNotEmpty) {
-      return explicit;
-    }
+  @override
+  State<_AnnouncementCard> createState() => _AnnouncementCardState();
+}
 
-    switch (notification.notification.type.toLowerCase()) {
-      case 'assignment':
-        return '/student/dashboard?tab=tasks';
-      case 'material':
-        return '/student/dashboard?tab=courses';
+class _AnnouncementCardState extends State<_AnnouncementCard> {
+  bool _expanded = false;
+
+  String _routeForNotification() {
+    final explicit = widget.notification.notification.route?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    switch (widget.notification.notification.type.toLowerCase()) {
+      case 'assignment': return '/student/dashboard?tab=tasks';
+      case 'material': return '/student/dashboard?tab=courses';
       case 'registration':
       case 'announcement':
-      case 'general':
-        return '/student/dashboard?tab=notifications';
-      case 'attendance':
-        return '/student/dashboard?tab=attendance';
-      default:
-        return '/student/dashboard?tab=notifications';
+      case 'general': return '/student/dashboard?tab=notifications';
+      case 'attendance': return '/student/dashboard?tab=attendance';
+      default: return '/student/dashboard?tab=notifications';
+    }
+  }
+
+  String get _actionText {
+    switch (widget.notification.notification.type.toLowerCase()) {
+      case 'assignment': return 'View Assignment';
+      case 'attendance': return 'View Attendance';
+      case 'material': return 'View Material';
+      default: return 'View Details';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final time = DateFormat('dd MMM, hh:mm a').format(notification.createdAt);
-    return GestureDetector(
-      onTap: () {
-        final route = _routeForNotification();
-        if (route != null && route.isNotEmpty) {
-          context.go(route);
-        }
-      },
-      child: _SurfaceCard(
-        accentColor: notification.read ? AppColors.ink100 : AppColors.primaryDark,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(notification.read ? 0.08 : 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                _notificationIcon(notification.notification.type),
-                color: notification.read ? AppColors.ink500 : AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          notification.notification.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
-                        ),
+    final note = widget.notification;
+    final time = DateFormat('hh:mm a').format(note.createdAt);
+    final date = DateFormat('MMM dd').format(note.createdAt);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        color: note.read ? Colors.transparent : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: note.read ? Colors.transparent : AppColors.border),
+        boxShadow: note.read ? [] : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => setState(() => _expanded = !_expanded),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: note.read ? AppColors.ink100 : AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      Text(time, style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    notification.notification.body,
-                    style: const TextStyle(color: AppColors.ink500, height: 1.35),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Text(
-                        _prettyType(notification.notification.type),
-                        style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+                      child: Icon(
+                        _notificationIcon(note.notification.type),
+                        size: 20,
+                        color: note.read ? AppColors.ink500 : AppColors.primary,
                       ),
-                      const Spacer(),
-                      if (!notification.read)
-                        const CircleAvatar(radius: 5, backgroundColor: AppColors.primaryDark),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  note.notification.title,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: note.read ? FontWeight.w600 : FontWeight.w800,
+                                    color: note.read ? AppColors.ink700 : AppColors.ink900,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              if (!note.read) const CircleAvatar(radius: 4, backgroundColor: AppColors.primary),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _expanded ? note.notification.body : note.notification.body.replaceAll('\n', ' '),
+                            maxLines: _expanded ? null : 2,
+                            overflow: _expanded ? null : TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: note.read ? AppColors.ink500 : AppColors.ink700,
+                              height: 1.4,
+                            ),
+                          ),
+                          if (_expanded) ...[
+                             const SizedBox(height: 16),
+                             Row(
+                               children: [
+                                 Text('$date at $time', style: const TextStyle(fontSize: 12, color: AppColors.ink300, fontWeight: FontWeight.w600)),
+                                 const Spacer(),
+                                 FilledButton.tonal(
+                                   style: FilledButton.styleFrom(
+                                     visualDensity: VisualDensity.compact,
+                                     backgroundColor: AppColors.primary.withOpacity(0.1),
+                                     foregroundColor: AppColors.primaryDark,
+                                   ),
+                                   onPressed: () {
+                                      final route = _routeForNotification();
+                                      if (route.isNotEmpty) context.go(route);
+                                   },
+                                   child: Text(_actionText, style: const TextStyle(fontWeight: FontWeight.w700)),
+                                 ),
+                               ],
+                             )
+                          ] else ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Text(_prettyType(note.notification.type), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primaryLight, letterSpacing: 0.5)),
+                                const Spacer(),
+                                Text(time, style: const TextStyle(fontSize: 12, color: AppColors.ink300, fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ]
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
 
 String _prettyType(String type) {
   if (type.isEmpty) {
@@ -1860,71 +1921,21 @@ class _CoursesTab extends StatelessWidget {
     required this.onOpenRegistration,
   });
 
-  void _showCourseDetails(BuildContext context, CourseDashboardItem course) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(course.course.title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            Text(course.course.code, style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            Text('Faculty: ${course.facultyName}'),
-            Text('Attendance: ${course.attendancePercentage.toStringAsFixed(0)}%'),
-            Text('Pending tasks: ${course.pendingTaskCount}'),
-            const SizedBox(height: 12),
-            Text(course.course.description),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openMaterial(BuildContext context, StudyMaterialDashboardItem material) async {
-    final uri = Uri.tryParse(material.material.fileUrl);
-    if (uri == null) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid link.')));
-      }
-      return;
-    }
-    try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open this material.')));
-      }
-    }
+  void _navigateToDetail(BuildContext context, CourseDashboardItem course) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => course_detail.CourseDetailScreen(course: course, data: data),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalCredits = data.currentCourses.fold<int>(0, (sum, item) => sum + item.course.credits);
-    final upcoming = data.pendingTasks.take(2).toList();
-    final registration = data.nextSemesterRegistration;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        const _BrandHeader(
-          eyebrow: 'ACADEMIC YEAR 2023-24',
-          title: 'Your Academic Curriculum',
-          subtitle: 'View current semester courses, upcoming approved courses and next semester registration in one place.',
-        ),
-        const SizedBox(height: 16),
         const _SectionHeader(
           eyebrow: 'CURRENT SEMESTER',
-          title: 'Current Semester Courses',
-          subtitle: 'Your active enrollments stay visible while next semester planning happens separately.',
+          title: 'Courses',
+          subtitle: 'Your active enrollments for this semester.',
         ),
         const SizedBox(height: 16),
         if (data.currentCourses.isEmpty)
@@ -1935,113 +1946,26 @@ class _CoursesTab extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(24),
-                onTap: () => _showCourseDetails(context, course),
+                onTap: () => _navigateToDetail(context, course),
                 child: _CourseFeatureCard(course: course),
               ),
             ),
           ),
         const SizedBox(height: 12),
-        const _SectionHeader(
-          eyebrow: 'UPCOMING SEMESTER',
-          title: 'Upcoming Semester Courses',
-          subtitle: 'Approved next semester courses appear here without replacing your current semester list.',
-        ),
-        const SizedBox(height: 12),
-        if (data.upcomingCourses.isEmpty)
-          const _EmptyState(message: 'No upcoming semester courses have been approved yet.')
-        else
+        if (data.upcomingCourses.isNotEmpty) ...[
+          const _SectionHeader(
+            eyebrow: 'UPCOMING SEMESTER',
+            title: 'Upcoming Courses',
+            subtitle: 'Approved next semester courses.',
+          ),
+          const SizedBox(height: 12),
           ...data.upcomingCourses.map(
             (course) => Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _UpcomingCourseCard(course: course),
             ),
           ),
-        const SizedBox(height: 12),
-        const _SectionHeader(
-          eyebrow: 'REGISTRATION',
-          title: 'Next Semester Registration',
-          subtitle: 'Submit or track your registration without affecting your current semester courses.',
-        ),
-        const SizedBox(height: 12),
-        _RegistrationStatusCard(
-          registration: registration,
-          onOpenRegistration: onOpenRegistration,
-        ),
-        const SizedBox(height: 12),
-        _SurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Semester Overview',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Academic credit load  $totalCredits credits',
-                style: const TextStyle(color: AppColors.ink500, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 12),
-              LinearProgressIndicator(
-                value: totalCredits == 0 ? 0 : (totalCredits / 30).clamp(0.0, 1.0),
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(999),
-                backgroundColor: AppColors.ink100,
-                valueColor: const AlwaysStoppedAnimation(AppColors.success),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(child: _SmallCounter(title: 'Current courses', value: '${data.currentCourses.length.toString().padLeft(2, '0')}')),
-                  const SizedBox(width: 12),
-                  Expanded(child: _SmallCounter(title: 'Upcoming courses', value: '${data.upcomingCourses.length.toString().padLeft(2, '0')}')),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SurfaceCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Upcoming Deadlines',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
-              ),
-              const SizedBox(height: 10),
-              if (upcoming.isEmpty)
-                const Text('No upcoming deadlines right now.')
-              else
-                ...upcoming.map(
-                  (task) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _DeadlineRow(task: task),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        const _SectionHeader(
-          eyebrow: 'STUDY MATERIALS',
-          title: 'Uploaded Study Materials',
-          subtitle: 'Open files uploaded by your faculty directly from the app.',
-        ),
-        const SizedBox(height: 12),
-        if (data.studyMaterials.isEmpty)
-          const _EmptyState(message: 'No study materials have been uploaded yet.')
-        else
-          ...data.studyMaterials.map(
-            (material) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () => _openMaterial(context, material),
-                child: _MaterialDownloadCard(material: material),
-              ),
-            ),
-          ),
+        ],
       ],
     );
   }
@@ -2281,7 +2205,7 @@ class _TasksTab extends StatelessWidget {
   Future<void> _openQuiz(BuildContext context, QuizDashboardItem quiz) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => _QuizAttemptScreen(quiz: quiz),
+        builder: (_) => QuizAttemptScreen(quiz: quiz),
       ),
     );
   }
@@ -2400,9 +2324,7 @@ class _TasksTab extends StatelessWidget {
 
 class _NotificationsTab extends StatefulWidget {
   final StudentDashboardData data;
-
   const _NotificationsTab({required this.data});
-
   @override
   State<_NotificationsTab> createState() => _NotificationsTabState();
 }
@@ -2415,6 +2337,10 @@ class _NotificationsTabState extends State<_NotificationsTab> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   @override
@@ -2436,89 +2362,133 @@ class _NotificationsTabState extends State<_NotificationsTab> {
       return matchesQuery && matchesFilter;
     }).toList();
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        const _BrandHeader(
-          eyebrow: 'CAMPUS ANNOUNCEMENTS',
-          title: 'Campus Announcements',
-          subtitle: 'Stay updated with notices from across the campus.',
-        ),
-        const SizedBox(height: 16),
-        _SurfaceCard(
-          child: TextField(
-            controller: _searchController,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Search notices...',
-              border: InputBorder.none,
+    // Grouping
+    final today = <DashboardNotificationItem>[];
+    final yesterday = <DashboardNotificationItem>[];
+    final earlier = <DashboardNotificationItem>[];
+
+    final now = DateTime.now();
+    final yesterdayDate = now.subtract(const Duration(days: 1));
+
+    for (final note in filtered) {
+      if (_isSameDay(note.createdAt, now)) {
+        today.add(note);
+      } else if (_isSameDay(note.createdAt, yesterdayDate)) {
+        yesterday.add(note);
+      } else {
+        earlier.add(note);
+      }
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Notices', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+                  TextButton.icon(
+                    onPressed: () {
+                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked all as read')));
+                    },
+                    icon: const Icon(Icons.done_all, size: 18),
+                    label: const Text('Mark read'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _FilterPill(
-              label: 'All Notices',
-              selected: _filter == 'all',
-              onTap: () => setState(() => _filter = 'all'),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: _SurfaceCard(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search, color: AppColors.ink300),
+                    hintText: 'Search notices...',
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                ),
+              ),
             ),
-            _FilterPill(
-              label: 'Academic',
-              selected: _filter == 'academic',
-              onTap: () => setState(() => _filter = 'academic'),
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 44,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _FilterPill(label: 'All Notices', selected: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
+                  const SizedBox(width: 8),
+                  _FilterPill(label: 'Academic', selected: _filter == 'academic', onTap: () => setState(() => _filter = 'academic')),
+                  const SizedBox(width: 8),
+                  _FilterPill(label: 'Assignments', selected: _filter == 'assignment', onTap: () => setState(() => _filter = 'assignment')),
+                  const SizedBox(width: 8),
+                  _FilterPill(label: 'General', selected: _filter == 'general', onTap: () => setState(() => _filter = 'general')),
+                ],
+              ),
             ),
-            _FilterPill(
-              label: 'Assignments',
-              selected: _filter == 'assignment',
-              onTap: () => setState(() => _filter = 'assignment'),
-            ),
-            _FilterPill(
-              label: 'General',
-              selected: _filter == 'general',
-              onTap: () => setState(() => _filter = 'general'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (filtered.isEmpty)
-          const _EmptyState(message: 'No notifications match your search right now.')
-        else
-          ...filtered.map(
-            (notification) => Padding(
+          ),
+          if (filtered.isEmpty)
+            const SliverFillRemaining(
+              child: Center(child: _EmptyState(message: 'No notices found.')),
+            )
+          else ...[
+            if (today.isNotEmpty) _buildSection('Today', today),
+            if (yesterday.isNotEmpty) _buildSection('Yesterday', yesterday),
+            if (earlier.isNotEmpty) _buildSection('Earlier', earlier),
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, List<DashboardNotificationItem> items) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.ink500, letterSpacing: 1.2)),
+              );
+            }
+            return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _AnnouncementCard(notification: notification),
-            ),
-          ),
-        const SizedBox(height: 8),
-        _SurfaceCard(
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Older notices loading is not connected yet.')),
-                );
-              },
-              child: const Text('Load Older Notices'),
-            ),
-          ),
+              child: _AnnouncementCard(notification: items[index - 1]),
+            );
+          },
+          childCount: items.length + 1,
         ),
-      ],
+      ),
     );
   }
 }
 
+
 class _ProfileTab extends StatelessWidget {
   final StudentDashboardData data;
   final VoidCallback onLogout;
+  final VoidCallback onOpenCourses;
+  final VoidCallback onOpenRegistration;
 
   const _ProfileTab({
     required this.data,
     required this.onLogout,
+    required this.onOpenCourses,
+    required this.onOpenRegistration,
   });
 
   @override
@@ -2585,18 +2555,25 @@ class _ProfileTab extends StatelessWidget {
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Use the Courses tab to view all enrolled subjects.')),
-                    );
-                  },
+                  onPressed: onOpenCourses,
                   child: const Text('View Courses'),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
+        const _SectionHeader(
+          eyebrow: 'REGISTRATION',
+          title: 'Next Semester Registration',
+          subtitle: 'Submit or track your registration for upcoming academic terms.',
+        ),
+        const SizedBox(height: 12),
+        _RegistrationStatusCard(
+          registration: data.nextSemesterRegistration,
+          onOpenRegistration: onOpenRegistration,
+        ),
+        const SizedBox(height: 24),
         ElevatedButton.icon(
           onPressed: onLogout,
           icon: const Icon(Icons.logout),
@@ -3183,3 +3160,4 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
+

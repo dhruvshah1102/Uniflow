@@ -13,6 +13,7 @@ import '../../models/course.dart';
 import '../../models/quiz_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/faculty_module_service.dart';
+import 'assignment_submissions_screen.dart';
 
 enum _FacultyTab {
   dashboard,
@@ -1014,6 +1015,28 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
     );
   }
 
+  Future<void> _downloadExcel() async {
+    if (_selectedCourseId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a course first.')));
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      final courseCode = widget.data.courses.firstWhere((c) => c.courseId == _selectedCourseId).code;
+      await widget.service.generateAttendanceExcel(
+        courseId: _selectedCourseId!,
+        courseCode: courseCode,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance Excel downloaded successfully')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final present = _attendance.values.where((value) => value).length;
@@ -1159,6 +1182,11 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
                   ),
                 ),
               ),
+              IconButton(
+                onPressed: _submitting ? null : _downloadExcel,
+                icon: const Icon(Icons.download_rounded, color: AppColors.primary),
+                tooltip: 'Download Attendance Excel',
+              ),
               TextButton(
                 onPressed: () {
                   setState(() {
@@ -1252,6 +1280,7 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
   _ComposerMode _mode = _ComposerMode.assignment;
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
+  final _assignmentMarksCtrl = TextEditingController(text: '100');
   final _quizDurationCtrl = TextEditingController(text: '15');
   final _quizMarksCtrl = TextEditingController(text: '10');
   final List<_QuizQuestionDraft> _quizQuestions = [_QuizQuestionDraft()];
@@ -1262,6 +1291,7 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
+    _assignmentMarksCtrl.dispose();
     _quizDurationCtrl.dispose();
     _quizMarksCtrl.dispose();
     for (final question in _quizQuestions) {
@@ -1279,6 +1309,7 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
       title: _titleCtrl.text.trim(),
       description: _descCtrl.text.trim(),
       dueDate: _dueDate,
+      totalMarks: int.tryParse(_assignmentMarksCtrl.text.trim()) ?? 100,
     );
     if (!mounted) return;
     _titleCtrl.clear();
@@ -1741,44 +1772,58 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
-              if (_mode == _ComposerMode.assignment)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime(2100),
-                        initialDate: _dueDate,
-                      );
-                      if (picked != null) {
-                        setState(() => _dueDate = picked);
-                      }
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 14,
-                      ),
-                      alignment: Alignment.center,
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.event_outlined),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Due: ${DateFormat('dd MMM yyyy').format(_dueDate)}',
+              if (_mode == _ComposerMode.assignment) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: SizedBox(
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              firstDate: DateTime.now(),
+                              lastDate: DateTime(2100),
+                              initialDate: _dueDate,
+                            );
+                            if (picked != null) {
+                              setState(() => _dueDate = picked);
+                            }
+                          },
+                          style: OutlinedButton.styleFrom(
+                            alignment: Alignment.center,
                           ),
-                        ],
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.event_outlined),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Due: ${DateFormat('dd MMM').format(_dueDate)}',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                )
-              else ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 1,
+                      child: TextField(
+                        controller: _assignmentMarksCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Marks',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
                 Row(
                   children: [
                     Expanded(
@@ -1859,9 +1904,20 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
         ...widget.data.assignments.map(
           (assignment) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _GlassCard(
-              accent: AppColors.primaryDark,
-              child: Column(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => AssignmentSubmissionsScreen(
+                    assignment: assignment,
+                    courseCode: assignment.courseId,
+                    totalStudents: 10,
+                  ),
+                ));
+              },
+              child: _GlassCard(
+                accent: AppColors.primaryDark,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
@@ -1915,6 +1971,7 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                   ),
                 ],
               ),
+            ),
             ),
           ),
         ),
@@ -2264,7 +2321,7 @@ class _FacultyNotificationsTabState extends State<_FacultyNotificationsTab> {
           (notification) => Card(
             child: ListTile(
               title: Text(notification.title),
-              subtitle: Text(notification.body),
+              subtitle: Text(notification.message),
             ),
           ),
         ),

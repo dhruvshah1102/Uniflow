@@ -130,40 +130,13 @@ class _UserManagementTabState extends State<UserManagementTab> {
               admins: admins.length,
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _normalizing ? null : _normalizeUsers,
-                    icon: _normalizing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.cleaning_services_outlined),
-                    label: const Text('Normalize Existing Users'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _normalizing ? null : _resetCanonicalData,
-                    icon: const Icon(Icons.cloud_upload_outlined),
-                    label: const Text('Reset Canonical Data'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryDark,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                IconButton(
-                  tooltip: 'Refresh',
-                  onPressed: widget.onChanged,
-                  icon: const Icon(Icons.refresh),
-                ),
-              ],
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                tooltip: 'Refresh',
+                onPressed: widget.onChanged,
+                icon: const Icon(Icons.refresh),
+              ),
             ),
             const SizedBox(height: 16),
             _SectionCard(

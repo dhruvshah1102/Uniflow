@@ -335,13 +335,7 @@ class AuthService {
     }
 
     final notifications = [
-      {
-        'notificationId': 'demo_notif_${uid}_1',
-        'userId': uid,
-        'title': 'Welcome to UniFlow',
-        'body': 'Your semester 5 dashboard is ready.',
-        'type': 'general',
-      },
+
       {
         'notificationId': 'demo_notif_${uid}_2',
         'userId': uid,
