@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/academic_result.dart';
 import '../models/user_model.dart';
 import '../data/seed/seed_data.dart';
+import 'admin_module_service.dart';
 
 // ROLE TESTING — seed these 3 users manually in Firebase Console
 // or use the admin panel once built.
@@ -158,7 +159,7 @@ class AuthService {
       'fcm_token': '',
       'created_at': FieldValue.serverTimestamp(),
       'department': 'CSE',
-      'semester': 5,
+      'semester': 1,
       'division': 'A',
       'section': 'A',
     }, SetOptions(merge: true));
@@ -167,7 +168,7 @@ class AuthService {
       'user_id': uid,
       'enrollment_no': enrollmentNo,
       'department': 'CSE',
-      'semester': 5,
+      'semester': 1,
       'division': 'A',
       'section': 'A',
       'classroom_student_id': null,
@@ -175,64 +176,64 @@ class AuthService {
 
     final courses = [
       {
-        'courseId': 'cse301',
-        'title': 'Data Structures & Algorithms',
-        'code': 'CS301',
-        'description': 'Advanced algorithms, complexity analysis and graph theory.',
+        'courseId': 'cse101',
+        'title': 'Programming Fundamentals',
+        'code': 'CS101',
+        'description': 'Introductory programming and problem solving.',
         'credits': 4,
         'facultyId': 'faculty1',
         'facultyName': facultyName,
-        'semester': 5,
+        'semester': 1,
       },
       {
-        'courseId': 'cse302',
-        'title': 'Operating Systems',
-        'code': 'CS302',
-        'description': 'Process management, memory allocation and kernel architecture.',
+        'courseId': 'cse102',
+        'title': 'Computer Systems Basics',
+        'code': 'CS102',
+        'description': 'Computer organization and system architecture basics.',
         'credits': 4,
         'facultyId': 'faculty1',
         'facultyName': facultyName,
-        'semester': 5,
+        'semester': 1,
       },
       {
-        'courseId': 'cse303',
-        'title': 'Database Management Systems',
-        'code': 'CS303',
-        'description': 'Relational model, transactions, indexing and optimization.',
+        'courseId': 'mat101',
+        'title': 'Engineering Mathematics I',
+        'code': 'MA101',
+        'description': 'Calculus, matrices and linear algebra foundations.',
         'credits': 4,
         'facultyId': 'faculty1',
         'facultyName': facultyName,
-        'semester': 5,
+        'semester': 1,
       },
       {
-        'courseId': 'ece305',
-        'title': 'Digital Signal Processing',
-        'code': 'EC305',
-        'description': 'Signal filtering, spectrum analysis and transform methods.',
-        'credits': 4,
+        'courseId': 'eng101',
+        'title': 'Technical English',
+        'code': 'EN101',
+        'description': 'Communication and technical writing skills.',
+        'credits': 2,
         'facultyId': 'f002',
         'facultyName': 'Dr. Amit Kulkarni',
-        'semester': 5,
+        'semester': 1,
       },
       {
-        'courseId': 'aiml306',
-        'title': 'Machine Learning',
-        'code': 'AI306',
-        'description': 'Supervised learning, model evaluation and deployment basics.',
-        'credits': 4,
-        'facultyId': 'f003',
-        'facultyName': 'Dr. Neha Verma',
-        'semester': 5,
-      },
-      {
-        'courseId': 'aiml307',
-        'title': 'Artificial Intelligence',
-        'code': 'AI307',
-        'description': 'Search strategies, reasoning and intelligent agents.',
+        'courseId': 'phy101',
+        'title': 'Applied Physics',
+        'code': 'PH101',
+        'description': 'Mechanics, waves and laboratory foundations.',
         'credits': 3,
         'facultyId': 'f003',
         'facultyName': 'Dr. Neha Verma',
-        'semester': 5,
+        'semester': 1,
+      },
+      {
+        'courseId': 'cse103',
+        'title': 'Programming Lab',
+        'code': 'CS103',
+        'description': 'Hands-on programming laboratory.',
+        'credits': 2,
+        'facultyId': 'faculty1',
+        'facultyName': facultyName,
+        'semester': 1,
       },
     ];
 
@@ -247,7 +248,7 @@ class AuthService {
       );
     }
 
-    final enrolledCourseIds = ['cse301', 'cse302', 'cse303', 'ece305', 'aiml306', 'aiml307'];
+    final enrolledCourseIds = ['cse101', 'cse102', 'mat101', 'eng101', 'phy101', 'cse103'];
     for (var i = 0; i < enrolledCourseIds.length; i++) {
       batch.set(
         _firestore.collection('enrollments').doc('demo_enr_${uid}_${i + 1}'),
@@ -262,13 +263,13 @@ class AuthService {
     }
 
     final attendanceEntries = [
-      {'id': 'demo_att_${uid}_1', 'courseId': 'cse301', 'present': true, 'daysAgo': 0},
-      {'id': 'demo_att_${uid}_2', 'courseId': 'cse301', 'present': true, 'daysAgo': 2},
-      {'id': 'demo_att_${uid}_3', 'courseId': 'cse302', 'present': true, 'daysAgo': 1},
-      {'id': 'demo_att_${uid}_4', 'courseId': 'cse302', 'present': false, 'daysAgo': 0},
-      {'id': 'demo_att_${uid}_5', 'courseId': 'cse303', 'present': true, 'daysAgo': 3},
-      {'id': 'demo_att_${uid}_6', 'courseId': 'ece305', 'present': false, 'daysAgo': 0},
-      {'id': 'demo_att_${uid}_7', 'courseId': 'aiml306', 'present': true, 'daysAgo': 1},
+      {'id': 'demo_att_${uid}_1', 'courseId': 'cse101', 'present': true, 'daysAgo': 0},
+      {'id': 'demo_att_${uid}_2', 'courseId': 'cse101', 'present': true, 'daysAgo': 2},
+      {'id': 'demo_att_${uid}_3', 'courseId': 'cse102', 'present': true, 'daysAgo': 1},
+      {'id': 'demo_att_${uid}_4', 'courseId': 'cse102', 'present': false, 'daysAgo': 0},
+      {'id': 'demo_att_${uid}_5', 'courseId': 'mat101', 'present': true, 'daysAgo': 3},
+      {'id': 'demo_att_${uid}_6', 'courseId': 'eng101', 'present': false, 'daysAgo': 0},
+      {'id': 'demo_att_${uid}_7', 'courseId': 'phy101', 'present': true, 'daysAgo': 1},
     ];
     for (final entry in attendanceEntries) {
       batch.set(
@@ -287,35 +288,35 @@ class AuthService {
     final assignments = [
       {
         'assignmentId': 'demo_asg_1',
-        'courseId': 'cse301',
+        'courseId': 'cse101',
         'title': 'Graph Algorithms Quiz',
         'description': 'BFS, DFS and shortest path concepts.',
         'dueDate': now.toDate().add(const Duration(days: 7)),
       },
       {
         'assignmentId': 'demo_asg_2',
-        'courseId': 'cse302',
+        'courseId': 'cse102',
         'title': 'Process Scheduling Assignment',
         'description': 'Implement RR and SJF scheduler logic.',
         'dueDate': now.toDate().add(const Duration(days: 3)),
       },
       {
         'assignmentId': 'demo_asg_3',
-        'courseId': 'cse303',
+        'courseId': 'mat101',
         'title': 'SQL Lab 4',
         'description': 'Joins, nested queries and view creation.',
         'dueDate': now.toDate().add(const Duration(days: 5)),
       },
       {
         'assignmentId': 'demo_asg_4',
-        'courseId': 'ece305',
+        'courseId': 'eng101',
         'title': 'FFT Mini Project',
         'description': 'Signal denoising using FFT pipeline.',
         'dueDate': now.toDate().add(const Duration(days: 10)),
       },
       {
         'assignmentId': 'demo_asg_5',
-        'courseId': 'aiml306',
+        'courseId': 'phy101',
         'title': 'Regression Model Report',
         'description': 'Compare linear, ridge, lasso on dataset.',
         'dueDate': now.toDate().add(const Duration(days: 12)),
@@ -340,21 +341,21 @@ class AuthService {
         'notificationId': 'demo_notif_${uid}_2',
         'userId': uid,
         'title': 'Assignment Due',
-        'body': 'Graph Algorithms Quiz is due in 5 days.',
+        'body': 'Programming Fundamentals Quiz is due in 5 days.',
         'type': 'assignment',
       },
       {
         'notificationId': 'demo_notif_${uid}_3',
         'userId': uid,
         'title': 'Attendance Reminder',
-        'body': 'Your attendance in CS302 was marked absent today.',
+        'body': 'Your attendance in CS102 was marked absent today.',
         'type': 'attendance',
       },
       {
         'notificationId': 'demo_notif_${uid}_4',
         'userId': uid,
         'title': 'New Quiz Published',
-        'body': 'A new quiz has been added for Data Structures & Algorithms.',
+        'body': 'A new quiz has been added for Programming Fundamentals.',
         'type': 'assignment',
       },
     ];
@@ -371,12 +372,12 @@ class AuthService {
     }
 
     final demoResultMarks = <String, int>{
-      'cse301': 88,
-      'cse302': 91,
-      'cse303': 79,
-      'ece305': 67,
-      'aiml306': 73,
-      'aiml307': 84,
+      'cse101': 88,
+      'cse102': 91,
+      'mat101': 79,
+      'eng101': 67,
+      'phy101': 73,
+      'cse103': 84,
     };
     for (final course in courses) {
       final courseId = course['courseId'] as String;
@@ -415,9 +416,10 @@ class AuthService {
     final demoCourseIds = <String>{
       'cse101',
       'cse102',
-      'mat201',
-      'ece202',
-      'cse205',
+      'mat101',
+      'eng101',
+      'phy101',
+      'cse103',
     };
 
     final courseSnap = await _firestore.collection('courses').get();
@@ -544,6 +546,91 @@ class AuthService {
         final studentRef = _firestore.collection('students').doc(uid);
         await userRef.set({'semester': semester}, SetOptions(merge: true));
         await studentRef.set({'semester': semester}, SetOptions(merge: true));
+      }
+    }
+  }
+
+  Future<void> ensureDemoStudentSemesterFive({
+    required String uid,
+    required String email,
+  }) async {
+    await cleanupLegacyDemoData(uid: uid, role: 'student');
+    await _firestore.collection('users').doc(uid).set(
+      {
+        'name': 'Aarav Agarwal',
+        'email': email,
+        'role': 'student',
+        'uid_firebase': uid,
+        'fcm_token': '',
+        'created_at': FieldValue.serverTimestamp(),
+        'department': 'CSE',
+        'semester': 5,
+        'division': 'A',
+        'section': 'A',
+      },
+      SetOptions(merge: true),
+    );
+    await _firestore.collection('students').doc(uid).set(
+      {
+        'user_id': uid,
+        'enrollment_no': 'BT21CSE001',
+        'department': 'CSE',
+        'semester': 5,
+        'division': 'A',
+        'section': 'A',
+        'classroom_student_id': null,
+      },
+      SetOptions(merge: true),
+    );
+    await AdminModuleService.instance.seedSemesterEnrollments(
+      studentId: uid,
+      department: 'CSE',
+      semester: 5,
+    );
+  }
+
+  Future<void> purgeMistakenStudentAccount({
+    required String uid,
+    required String email,
+  }) async {
+    final batch = _firestore.batch();
+
+    final collections = <String>[
+      'users',
+      'students',
+      'enrollments',
+      'upcomingEnrollments',
+      'attendance',
+      'notifications',
+      'results',
+      'registrations',
+      'quiz_submissions',
+      'submissions',
+    ];
+
+    for (final collection in collections) {
+      final field = collection == 'submissions' ? 'student_id' : 'studentId';
+      final snap = await _firestore.collection(collection).where(field, isEqualTo: uid).get();
+      for (final doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    for (final collection in ['users', 'students']) {
+      final doc = await _firestore.collection(collection).doc(uid).get();
+      if (doc.exists) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    await batch.commit();
+
+    final currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      try {
+        await currentUser.delete();
+      } catch (_) {
+        // Ignore auth deletion failures here; Firestore cleanup already ran.
       }
     }
   }
@@ -785,6 +872,15 @@ class AuthService {
           break;
         default:
           return null;
+      }
+
+      final docSnapshot = await _firestore
+          .collection(collectionPath)
+          .doc(userId)
+          .get()
+          .timeout(const Duration(seconds: 5));
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        return {'id': docSnapshot.id, ...docSnapshot.data()!};
       }
 
       final snapshot = await _firestore

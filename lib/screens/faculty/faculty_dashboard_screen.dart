@@ -1023,12 +1023,14 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
     setState(() => _submitting = true);
     try {
       final courseCode = widget.data.courses.firstWhere((c) => c.courseId == _selectedCourseId).code;
-      await widget.service.generateAttendanceExcel(
+      final savedPath = await widget.service.generateAttendanceExcel(
         courseId: _selectedCourseId!,
         courseCode: courseCode,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Attendance Excel downloaded successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Attendance Excel saved to $savedPath')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));

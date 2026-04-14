@@ -255,7 +255,27 @@ class PushNotificationService {
     }
 
     if (role == 'student' || role.isEmpty) {
+      final courseId = data['courseId']?.toString().trim();
+      final sourceId = data['sourceId']?.toString().trim();
+      final assignmentId = data['assignmentId']?.toString().trim();
+      final quizId = data['quizId']?.toString().trim();
+      final sourceCollection = data['sourceCollection']?.toString().trim().toLowerCase();
+      if (courseId != null && courseId.isNotEmpty) {
+        final resolvedAssignmentId = (assignmentId != null && assignmentId.isNotEmpty) ? assignmentId : sourceId;
+        final resolvedQuizId = (quizId != null && quizId.isNotEmpty) ? quizId : sourceId;
+        if ((sourceCollection == 'assignments' || type == 'assignment') &&
+            resolvedAssignmentId != null &&
+            resolvedAssignmentId.isNotEmpty) {
+          return '/student/course/$courseId?tab=assignments&assignmentId=$resolvedAssignmentId';
+        }
+        if ((sourceCollection == 'quizzes' || type == 'quiz') &&
+            resolvedQuizId != null &&
+            resolvedQuizId.isNotEmpty) {
+          return '/student/course/$courseId?tab=quizzes&quizId=$resolvedQuizId';
+        }
+      }
       if (type == 'assignment') return '/student/dashboard?tab=tasks';
+      if (type == 'quiz') return '/student/dashboard?tab=tasks';
       if (type == 'registration') return '/student/dashboard?tab=notifications';
       return '/student/dashboard?tab=notifications';
     }

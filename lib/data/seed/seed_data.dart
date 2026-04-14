@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../../services/admin_module_service.dart';
+
 class SeedData {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -64,6 +66,14 @@ class SeedData {
     );
     await writer.commit();
 
+    // Seed the semester catalog before attaching demo academic data to it.
+    await AdminModuleService.instance.ensureCourseCatalog();
+    await AdminModuleService.instance.seedSemesterEnrollments(
+      studentId: studentUid,
+      department: 'CSE',
+      semester: 5,
+    );
+
     // Extra faculty (Firestore only).
     _upsertUser(writer, id: 'f002', name: 'Dr. Amit Kulkarni', email: 'amit.kulkarni@iiitn.ac.in', role: 'faculty', department: 'ECE');
     _upsertUser(writer, id: 'f003', name: 'Dr. Neha Verma', email: 'neha.verma@iiitn.ac.in', role: 'faculty', department: 'AI-DS');
@@ -89,7 +99,7 @@ class SeedData {
       'AI-DS','AI-DS','AI-DS','AI-DS'
     ];
 
-    final allStudentIds = <String>[studentUid];
+    final allStudentIds = <String>[];
     for (var i = 0; i < studentNames.length; i++) {
       final id = 's${(i + 2).toString().padLeft(3, '0')}';
       final name = studentNames[i];
@@ -649,21 +659,27 @@ class SeedData {
     int? semester,
     String? division,
   }) {
+    final data = <String, dynamic>{
+      'uid': id,
+      'uid_firebase': id,
+      'name': name,
+      'email': email,
+      'role': role,
+      'department': department,
+      'fcm_token': '',
+      'created_at': FieldValue.serverTimestamp(),
+    };
+    if (semester != null) {
+      data['semester'] = semester;
+    }
+    if (division != null) {
+      data['division'] = division;
+      data['section'] = division;
+    }
+
     writer.set(
       _db.collection('users').doc(id),
-      {
-        'uid': id,
-        'uid_firebase': id,
-        'name': name,
-        'email': email,
-        'role': role,
-        'department': department,
-        if (semester != null) 'semester': semester,
-        if (division != null) 'division': division,
-        if (division != null) 'section': division,
-        'fcm_token': '',
-        'created_at': FieldValue.serverTimestamp(),
-      },
+      data,
       merge: true,
     );
   }

@@ -11,6 +11,9 @@ class NotificationModel {
   final List<String> targetUserIds;
   final String? route;
   final String? sourceId;
+  final String? sourceCollection;
+  final String? assignmentId;
+  final String? quizId;
   final bool deliveryCopy;
   final bool read;
   final Timestamp createdAt;
@@ -26,6 +29,9 @@ class NotificationModel {
     this.targetUserIds = const [],
     this.route,
     this.sourceId,
+    this.sourceCollection,
+    this.assignmentId,
+    this.quizId,
     this.deliveryCopy = false,
     this.read = false,
     Timestamp? createdAt,
@@ -45,6 +51,9 @@ class NotificationModel {
           : const [],
       route: data['route']?.toString(),
       sourceId: data['sourceId']?.toString(),
+      sourceCollection: data['sourceCollection']?.toString(),
+      assignmentId: data['assignmentId']?.toString(),
+      quizId: data['quizId']?.toString(),
       deliveryCopy: data['deliveryCopy'] == true,
       read: data['read'] ?? false,
       createdAt: data['createdAt'] ?? Timestamp.now(),
@@ -62,6 +71,9 @@ class NotificationModel {
       if (targetUserIds.isNotEmpty) 'targetUserIds': targetUserIds,
       if (route != null) 'route': route,
       if (sourceId != null) 'sourceId': sourceId,
+      if (sourceCollection != null) 'sourceCollection': sourceCollection,
+      if (assignmentId != null) 'assignmentId': assignmentId,
+      if (quizId != null) 'quizId': quizId,
       if (deliveryCopy) 'deliveryCopy': deliveryCopy,
       'read': read,
       'createdAt': createdAt,

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/semester_registration.dart';
+import '../models/semester_registration_form.dart';
 import '../services/admin_module_service.dart';
 
 class SemesterRegistrationService {
@@ -20,11 +21,30 @@ class SemesterRegistrationService {
     required int currentSemester,
     int creditLimit = 24,
   }) async {
-    final targetSemester = currentSemester + 1;
+    await AdminModuleService.instance.seedInitialSemesterEnrollments(
+      studentId: studentId,
+      department: studentDepartment,
+    );
+    await AdminModuleService.instance.ensureCourseCatalog();
     final courseOptions = await _fetchCourseOptions();
+    final semesterCourseIds = _courseIdsForSemester(
+      courseOptions: courseOptions,
+      semester: currentSemester + 1,
+      department: studentDepartment,
+    );
+    final backlogCourseIds = _courseIdsForBacklog(
+      courseOptions: courseOptions,
+      semester: currentSemester + 1,
+      department: studentDepartment,
+    );
     final enrollments = await _fetchEnrollmentCourseIds(studentId);
     final upcomingEnrollments = await _fetchUpcomingEnrollmentCourseIds(studentId);
     final registrations = await _fetchRegistrations(studentId);
+    final activeForm = await _fetchActiveForm(
+      semester: currentSemester + 1,
+      department: studentDepartment,
+    );
+    final targetSemester = activeForm?.semester ?? currentSemester + 1;
 
     final activeRegistration = registrations
         .where((record) => record.targetSemester == targetSemester && (record.status == 'pending' || record.status == 'approved'))
@@ -33,8 +53,17 @@ class SemesterRegistrationService {
           return record.createdAt.compareTo(previous.createdAt) > 0 ? record : previous;
         });
 
+    final allowedCourseIds = _effectiveAllowedIds(
+      preferredIds: activeForm?.availableCourseIds ?? const <String>[],
+      fallbackIds: semesterCourseIds,
+    );
+    final allowedBacklogIds = _effectiveAllowedIds(
+      preferredIds: activeForm?.backlogCourseIds ?? const <String>[],
+      fallbackIds: backlogCourseIds,
+    );
     final availableCourses = courseOptions
         .where((course) => course.semester == targetSemester && _matchesDepartment(course.department, studentDepartment))
+        .where((course) => allowedCourseIds.isEmpty || allowedCourseIds.contains(course.id))
         .where((course) => !enrollments.contains(course.id))
         .where((course) => !upcomingEnrollments.contains(course.id))
         .toList()
@@ -42,7 +71,7 @@ class SemesterRegistrationService {
 
     final backlogCourses = courseOptions
         .where((course) => course.semester > 0 && course.semester < targetSemester && _matchesDepartment(course.department, studentDepartment))
-        .where((course) => !enrollments.contains(course.id))
+        .where((course) => allowedBacklogIds.isEmpty || allowedBacklogIds.contains(course.id))
         .where((course) => !upcomingEnrollments.contains(course.id))
         .toList()
       ..sort((a, b) => a.courseCode.toLowerCase().compareTo(b.courseCode.toLowerCase()));
@@ -60,6 +89,70 @@ class SemesterRegistrationService {
       upcomingCourseIds: upcomingEnrollments,
       activeRegistration: activeRegistration,
     );
+  }
+
+  Stream<List<SemesterRegistrationForm>> streamRegistrationForms({bool activeOnly = true}) {
+    return _db.collection('registrationForms').snapshots().map((snap) {
+      final forms = snap.docs.map((doc) => SemesterRegistrationForm.fromMap(doc.data(), doc.id)).toList();
+      final filtered = activeOnly ? forms.where((form) => form.active).toList() : forms;
+      filtered.sort((a, b) {
+        final semesterCompare = a.semester.compareTo(b.semester);
+        if (semesterCompare != 0) return semesterCompare;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+      return filtered;
+    });
+  }
+
+  Future<SemesterRegistrationForm?> createRegistrationForm({
+    required int semester,
+    required String department,
+    required List<String> availableCourseIds,
+    required List<String> backlogCourseIds,
+    bool active = true,
+    String? createdBy,
+  }) async {
+    if (semester < 1 || semester > 12) {
+      throw Exception('Choose a valid semester between 1 and 12.');
+    }
+
+    await AdminModuleService.instance.fetchOverview();
+    final courses = await _fetchCourseOptions();
+    final allowedAvailableCourseIds = _courseIdsForSemester(
+      courseOptions: courses,
+      semester: semester,
+      department: department,
+    );
+    final allowedBacklogCourseIds = _courseIdsForBacklog(
+      courseOptions: courses,
+      semester: semester,
+      department: department,
+    );
+
+    final normalizedAvailable = _normalizeIds(availableCourseIds);
+    final normalizedBacklog = _normalizeIds(backlogCourseIds);
+    final selectedAvailableCourseIds = normalizedAvailable.isEmpty ? allowedAvailableCourseIds : normalizedAvailable.where((id) => allowedAvailableCourseIds.contains(id)).toList();
+    final selectedBacklogCourseIds = normalizedBacklog.isEmpty
+        ? allowedBacklogCourseIds
+        : normalizedBacklog.where((id) => allowedBacklogCourseIds.contains(id)).toList();
+
+    if (selectedAvailableCourseIds.isEmpty) {
+      throw Exception('Select at least one available course for the form.');
+    }
+
+    final formDoc = _db.collection('registrationForms').doc();
+    final form = SemesterRegistrationForm(
+      id: formDoc.id,
+      semester: semester,
+      department: department.trim(),
+      availableCourseIds: selectedAvailableCourseIds,
+      backlogCourseIds: selectedBacklogCourseIds,
+      active: active,
+      createdAt: Timestamp.now(),
+      createdBy: createdBy,
+    );
+    await formDoc.set(form.toMap());
+    return form;
   }
 
   Stream<List<SemesterRegistrationRecord>> streamRegistrations({String? studentId}) {
@@ -83,13 +176,17 @@ class SemesterRegistrationService {
     required String studentName,
     required String studentEmail,
     required int currentSemester,
+    required int targetSemester,
     required int creditLimit,
     required List<String> selectedCourseIds,
     required List<String> backlogCourseIds,
+    String? registrationFormId,
   }) async {
-    final targetSemester = currentSemester + 1;
     final normalizedSelected = _normalizeIds(selectedCourseIds);
     final normalizedBacklog = _normalizeIds(backlogCourseIds);
+    final allowedForm = await _fetchActiveForm(semester: targetSemester, department: '');
+    final allowedCourseIds = allowedForm?.availableCourseIds.toSet() ?? await _fetchAllowedCourseIdsForSemester(targetSemester);
+    final allowedBacklogIds = allowedForm?.backlogCourseIds.toSet() ?? <String>{};
 
     if (normalizedSelected.isEmpty) {
       throw Exception('Please select at least one course.');
@@ -112,6 +209,14 @@ class SemesterRegistrationService {
 
     if (selected.any((course) => course.semester != targetSemester)) {
       throw Exception('Selected courses must belong to the next semester.');
+    }
+
+    if (allowedCourseIds.isNotEmpty && selected.any((course) => !allowedCourseIds.contains(course.id))) {
+      throw Exception('Selected courses are not part of the active registration form.');
+    }
+
+    if (allowedBacklogIds.isNotEmpty && backlog.any((course) => !allowedBacklogIds.contains(course.id))) {
+      throw Exception('Backlog courses are not part of the active registration form.');
     }
 
     if (backlog.any((course) => course.semester >= targetSemester)) {
@@ -144,7 +249,7 @@ class SemesterRegistrationService {
     }
 
     final docRef = _db.collection('registrations').doc();
-    await docRef.set({
+    final data = <String, dynamic>{
       'studentId': studentId,
       'studentName': studentName,
       'studentEmail': studentEmail,
@@ -159,7 +264,11 @@ class SemesterRegistrationService {
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
       'registrationType': 'semester_registration',
-    });
+    };
+    if (registrationFormId != null) {
+      data['registrationFormId'] = registrationFormId;
+    }
+    await docRef.set(data);
     return docRef.id;
   }
 
@@ -188,14 +297,12 @@ class SemesterRegistrationService {
       if (approve) {
         final courseIds = {...record.selectedCourseIds, ...record.backlogCourseIds}.toList();
         for (final courseId in courseIds) {
-          final enrollRef = _db.collection('upcomingEnrollments').doc('upcoming_${record.studentId}_$courseId');
+          final enrollRef = _db.collection('enrollments').doc('enr_${record.studentId}_$courseId');
           txn.set(
             enrollRef,
             {
               'studentId': record.studentId,
               'courseId': courseId,
-              'semesterType': 'upcoming',
-              'currentSemester': record.currentSemester,
               'semester': record.targetSemester,
               'status': 'active',
               'registrationId': record.id,
@@ -205,6 +312,24 @@ class SemesterRegistrationService {
             SetOptions(merge: true),
           );
         }
+
+        final studentUserRef = _db.collection('users').doc(record.studentId);
+        txn.set(
+          studentUserRef,
+          {
+            'semester': record.targetSemester,
+            'updated_at': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        txn.set(
+          _db.collection('students').doc(record.studentId),
+          {
+            'semester': record.targetSemester,
+            'updated_at': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
       }
 
       txn.set(
@@ -241,6 +366,7 @@ class SemesterRegistrationService {
   Future<void> resetUpcomingRegistrationCycle() async {
     final registrationsSnap = await _db.collection('registrations').get();
     final upcomingSnap = await _db.collection('upcomingEnrollments').get();
+    final formsSnap = await _db.collection('registrationForms').get();
 
     final registrationRefs = registrationsSnap.docs
         .where((doc) {
@@ -250,8 +376,9 @@ class SemesterRegistrationService {
         .map((doc) => doc.reference)
         .toList();
     final upcomingRefs = upcomingSnap.docs.map((doc) => doc.reference).toList();
+    final formRefs = formsSnap.docs.map((doc) => doc.reference).toList();
 
-    await _deleteRefs([...registrationRefs, ...upcomingRefs]);
+    await _deleteRefs([...registrationRefs, ...upcomingRefs, ...formRefs]);
   }
 
   Future<List<RegistrationCourseOption>> _fetchCourseOptions() async {
@@ -260,6 +387,42 @@ class SemesterRegistrationService {
         .map((doc) => RegistrationCourseOption.fromMap(doc.data(), doc.id))
         .where((course) => course.courseName.trim().isNotEmpty)
         .toList();
+  }
+
+  List<String> _courseIdsForSemester({
+    required List<RegistrationCourseOption> courseOptions,
+    required int semester,
+    required String department,
+  }) {
+    return courseOptions
+        .where((course) => course.semester == semester && _matchesDepartment(course.department, department))
+        .map((course) => course.id)
+        .toSet()
+        .toList();
+  }
+
+  List<String> _courseIdsForBacklog({
+    required List<RegistrationCourseOption> courseOptions,
+    required int semester,
+    required String department,
+  }) {
+    return courseOptions
+        .where((course) => course.semester > 0 && course.semester < semester && _matchesDepartment(course.department, department))
+        .map((course) => course.id)
+        .toSet()
+        .toList();
+  }
+
+  Set<String> _effectiveAllowedIds({
+    required List<String> preferredIds,
+    required List<String> fallbackIds,
+  }) {
+    final preferred = _normalizeIds(preferredIds);
+    final fallback = _normalizeIds(fallbackIds);
+    if (preferred.isEmpty || preferred.length < fallback.length) {
+      return fallback.toSet();
+    }
+    return preferred.toSet();
   }
 
   Future<List<String>> _fetchEnrollmentCourseIds(String studentId) async {
@@ -285,6 +448,40 @@ class SemesterRegistrationService {
   Future<List<SemesterRegistrationRecord>> _fetchRegistrations(String studentId) async {
     final snap = await _db.collection('registrations').where('studentId', isEqualTo: studentId).get();
     return snap.docs.map((doc) => SemesterRegistrationRecord.fromMap(doc.data(), doc.id)).toList();
+  }
+
+  Future<SemesterRegistrationForm?> _fetchActiveForm({
+    required int semester,
+    required String department,
+  }) async {
+    final snap = await _db
+        .collection('registrationForms')
+        .where('semester', isEqualTo: semester)
+        .where('active', isEqualTo: true)
+        .get();
+    if (snap.docs.isEmpty) return null;
+
+    final forms = snap.docs
+        .map((doc) => SemesterRegistrationForm.fromMap(doc.data(), doc.id))
+        .where((form) => form.department.isEmpty || department.trim().isEmpty || form.department.toLowerCase() == department.trim().toLowerCase())
+        .toList();
+    if (forms.isEmpty) return null;
+    forms.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return forms.first;
+  }
+
+  Future<Set<String>> _fetchAllowedCourseIdsForSemester(int semester) async {
+    final snap = await _db
+        .collection('registrationForms')
+        .where('semester', isEqualTo: semester)
+        .where('active', isEqualTo: true)
+        .get();
+    final allowed = <String>{};
+    for (final doc in snap.docs) {
+      final form = SemesterRegistrationForm.fromMap(doc.data(), doc.id);
+      allowed.addAll(form.availableCourseIds);
+    }
+    return allowed;
   }
 
   Future<Map<String, RegistrationCourseOption>> _fetchCourseMap(List<String> ids) async {

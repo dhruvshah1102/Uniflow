@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 
+import '../firebase_options.dart';
 import 'canonical_firestore_reset_service.dart';
 import 'semester_registration_service.dart';
 
@@ -167,6 +170,7 @@ class AdminModuleService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   Future<AdminOverview> fetchOverview() async {
+    await _ensureSemesterOneCatalog();
     final usersSnap = await _db.collection('users').get();
     final coursesSnap = await _db.collection('courses').get();
     final registrationsSnap = await _db.collection('registrations').get();
@@ -191,10 +195,22 @@ class AdminModuleService {
     );
   }
 
+  Future<void> ensureCourseCatalog() async {
+    await _removeGeneratedSemesterFiveCatalog();
+    await _ensureSemesterOneCatalog();
+  }
+
+  Future<List<String>> cleanupEmptySemesterFiveCourses() {
+    return _removeEmptySemesterCourses(semester: 5);
+  }
+
   Stream<AdminOverview> watchOverview() {
     final controller = StreamController<AdminOverview>.broadcast();
     final subscriptions = <StreamSubscription<dynamic>>[];
     var closed = false;
+    var refreshInFlight = false;
+    var refreshQueued = false;
+    Timer? debounceTimer;
 
     Future<void> emitSnapshot() async {
       if (closed || controller.isClosed) return;
@@ -210,10 +226,36 @@ class AdminModuleService {
       }
     }
 
+    void scheduleEmitSnapshot() {
+      if (closed || controller.isClosed) return;
+      refreshQueued = true;
+      debounceTimer?.cancel();
+      debounceTimer = Timer(const Duration(milliseconds: 120), () {
+        if (closed || controller.isClosed) return;
+        if (refreshInFlight) {
+          refreshQueued = true;
+          return;
+        }
+
+        refreshQueued = false;
+        refreshInFlight = true;
+        unawaited(() async {
+          try {
+            await emitSnapshot();
+          } finally {
+            refreshInFlight = false;
+            if (!closed && !controller.isClosed && refreshQueued) {
+              scheduleEmitSnapshot();
+            }
+          }
+        }());
+      });
+    }
+
     void startListeners() {
-      subscriptions.add(_db.collection('users').snapshots().listen((_) => emitSnapshot()));
-      subscriptions.add(_db.collection('courses').snapshots().listen((_) => emitSnapshot()));
-      subscriptions.add(_db.collection('registrations').snapshots().listen((_) => emitSnapshot()));
+      subscriptions.add(_db.collection('users').snapshots().listen((_) => scheduleEmitSnapshot()));
+      subscriptions.add(_db.collection('courses').snapshots().listen((_) => scheduleEmitSnapshot()));
+      subscriptions.add(_db.collection('registrations').snapshots().listen((_) => scheduleEmitSnapshot()));
     }
 
     controller.onListen = () {
@@ -226,6 +268,7 @@ class AdminModuleService {
       for (final sub in subscriptions) {
         unawaited(sub.cancel());
       }
+      debounceTimer?.cancel();
       unawaited(controller.close());
     };
 
@@ -343,10 +386,647 @@ class AdminModuleService {
     await batch.commit();
   }
 
+  Future<void> deleteUserData({
+    required String userId,
+    required String role,
+  }) async {
+    final normalizedUserId = userId.trim();
+    final normalizedRole = role.trim().toLowerCase();
+    if (normalizedUserId.isEmpty) {
+      throw Exception('User id is required.');
+    }
+
+    final userDoc = await _db.collection('users').doc(normalizedUserId).get();
+    final userData = userDoc.data();
+    final email = _string(userData?['email']) ?? '';
+
+    final docsToDelete = <DocumentReference<Map<String, dynamic>>>{};
+
+    Future<void> addDocs(QuerySnapshot<Map<String, dynamic>> snap) async {
+      for (final doc in snap.docs) {
+        docsToDelete.add(doc.reference);
+      }
+    }
+
+    // Always remove the direct profile documents first.
+    for (final collection in ['users', 'students', 'faculty', 'admins']) {
+      final doc = await _db.collection(collection).doc(normalizedUserId).get();
+      if (doc.exists) {
+        docsToDelete.add(doc.reference);
+      }
+    }
+
+    // Student-linked academic history.
+    for (final collection in [
+      'enrollments',
+      'upcomingEnrollments',
+      'attendance',
+      'results',
+      'registrations',
+      'quiz_submissions',
+      'submissions',
+    ]) {
+      final studentIdFieldQueries = <Future<QuerySnapshot<Map<String, dynamic>>>>[
+        _db.collection(collection).where('studentId', isEqualTo: normalizedUserId).get(),
+        _db.collection(collection).where('userId', isEqualTo: normalizedUserId).get(),
+        _db.collection(collection).where('user_id', isEqualTo: normalizedUserId).get(),
+        _db.collection(collection).where('student_id', isEqualTo: normalizedUserId).get(),
+      ];
+
+      for (final snap in await Future.wait(studentIdFieldQueries)) {
+        await addDocs(snap);
+      }
+    }
+
+    final notificationsQueries = <Future<QuerySnapshot<Map<String, dynamic>>>>[
+      _db.collection('notifications').where('userId', isEqualTo: normalizedUserId).get(),
+      _db.collection('notifications').where('createdBy', isEqualTo: normalizedUserId).get(),
+      _db.collection('notifications').where('targetUserIds', arrayContains: normalizedUserId).get(),
+    ];
+    for (final snap in await Future.wait(notificationsQueries)) {
+      await addDocs(snap);
+    }
+
+    // If this is a faculty account, remove every course taught by them and all dependent records.
+    if (normalizedRole == 'faculty') {
+      final courseSnap = await _db.collection('courses').where('facultyId', isEqualTo: normalizedUserId).get();
+      final fallbackCourseSnap = await _db.collection('courses').where('faculty_id', isEqualTo: normalizedUserId).get();
+      final courseIds = <String>{
+        ...courseSnap.docs.map((doc) => _string(doc.data()['courseId']) ?? doc.id).where((id) => id.isNotEmpty),
+        ...fallbackCourseSnap.docs.map((doc) => _string(doc.data()['courseId']) ?? doc.id).where((id) => id.isNotEmpty),
+      };
+      for (final courseId in courseIds) {
+        await deleteCourse(courseId);
+      }
+      final facultyNotices = await _db.collection('notifications').where('createdBy', isEqualTo: normalizedUserId).get();
+      await addDocs(facultyNotices);
+    }
+
+    if (docsToDelete.isNotEmpty) {
+      await _deleteRefs(docsToDelete.toList());
+    }
+
+    // Keep registration forms clean if they were tied to a deleted faculty-created course.
+    if (normalizedRole == 'faculty' && email.isNotEmpty) {
+      final formsSnap = await _db.collection('registrationForms').get();
+      for (final doc in formsSnap.docs) {
+        final data = doc.data();
+        final createdBy = _string(data['createdBy']) ?? '';
+        if (createdBy == normalizedUserId) {
+          await doc.reference.delete();
+        }
+      }
+    }
+  }
+
+  Future<String> createFirebaseAuthUser({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+    required String department,
+    int? semester,
+    String? division,
+  }) async {
+    final normalizedRole = _normalizeRole(role);
+    final normalizedEmail = email.toLowerCase().trim();
+    final normalizedPassword = password.trim();
+    final normalizedDepartment = department.trim().isEmpty ? 'CSE' : department.trim();
+    if (normalizedEmail.isEmpty) {
+      throw Exception('Email is required.');
+    }
+    if (normalizedPassword.length < 6) {
+      throw Exception('Password must be at least 6 characters.');
+    }
+
+    final existing = await _db.collection('users').where('email', isEqualTo: normalizedEmail).limit(1).get();
+    if (existing.docs.isNotEmpty) {
+      throw Exception('A user with this email already exists.');
+    }
+
+    final appName = 'admin_create_${DateTime.now().microsecondsSinceEpoch}';
+    FirebaseApp? secondaryApp;
+    UserCredential? credential;
+    try {
+      secondaryApp = await Firebase.initializeApp(
+        name: appName,
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      final auth = FirebaseAuth.instanceFor(app: secondaryApp);
+      credential = await auth.createUserWithEmailAndPassword(
+        email: normalizedEmail,
+        password: normalizedPassword,
+      );
+
+      final uid = credential.user!.uid;
+      final batch = _db.batch();
+      batch.set(_db.collection('users').doc(uid), {
+        'uid': uid,
+        'uid_firebase': uid,
+        'name': name.trim(),
+        'email': normalizedEmail,
+        'role': normalizedRole,
+        'department': normalizedDepartment,
+        if (normalizedRole == 'student') ...{
+          'semester': 1,
+          'division': _normalizeDivision(division),
+          'section': _normalizeDivision(division),
+        } else if (semester != null) ...{
+          'semester': semester,
+        },
+        'fcm_token': '',
+        'created_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (normalizedRole == 'student') {
+        batch.set(_db.collection('students').doc(uid), {
+          'user_id': uid,
+          'enrollment_no': _enrollmentFromEmail(normalizedEmail),
+          'department': normalizedDepartment,
+          'semester': 1,
+          'division': _normalizeDivision(division),
+          'section': _normalizeDivision(division),
+          'classroom_student_id': null,
+        }, SetOptions(merge: true));
+      } else if (normalizedRole == 'faculty') {
+        batch.set(_db.collection('faculty').doc(uid), {
+          'user_id': uid,
+          'employee_id': 'FAC-${uid.substring(0, uid.length > 6 ? 6 : uid.length).toUpperCase()}',
+          'designation': 'Assistant Professor',
+          'department': department.trim(),
+          'classroom_teacher_id': null,
+        }, SetOptions(merge: true));
+      } else if (normalizedRole == 'admin') {
+        batch.set(_db.collection('admins').doc(uid), {
+          'user_id': uid,
+          'admin_level': '1',
+        }, SetOptions(merge: true));
+      }
+
+      try {
+        await batch.commit();
+      } catch (_) {
+        await credential.user?.delete();
+        rethrow;
+      }
+
+      if (normalizedRole == 'student') {
+        await seedInitialSemesterEnrollments(
+          studentId: uid,
+          department: normalizedDepartment,
+        );
+      }
+
+      return uid;
+    } on FirebaseAuthException catch (e) {
+      final message = switch (e.code) {
+        'email-already-in-use' => 'A user with this email already exists in Firebase Auth.',
+        'invalid-email' => 'Enter a valid email address.',
+        'weak-password' => 'Password is too weak.',
+        _ => e.message ?? 'Unable to create Firebase Auth user.',
+      };
+      throw Exception(message);
+    } finally {
+      if (secondaryApp != null) {
+        await secondaryApp.delete();
+      }
+      if (credential?.user != null) {
+        // Secondary app handles the sign-in only for creation, so no extra cleanup needed.
+      }
+    }
+  }
+
+  Future<void> seedSemesterEnrollments({
+    required String studentId,
+    required String department,
+    required int semester,
+  }) async {
+    await _ensureSemesterOneCatalog();
+    final snap = await _db
+        .collection('courses')
+        .where('semester', isEqualTo: semester)
+        .get();
+    final filtered = snap.docs.where((doc) {
+      final data = doc.data();
+      final courseDepartment = _string(data['department']) ?? '';
+      if (department.trim().isEmpty || courseDepartment.trim().isEmpty) return true;
+      return courseDepartment.trim().toLowerCase() == department.trim().toLowerCase();
+    }).toList();
+    final docs = filtered.isNotEmpty ? filtered : snap.docs;
+    if (docs.isEmpty) return;
+
+    final existingSnap = await _db
+        .collection('enrollments')
+        .where('studentId', isEqualTo: studentId)
+        .where('semester', isEqualTo: semester)
+        .get();
+    final existingCourseIds = existingSnap.docs
+        .map((doc) => _string(doc.data()['courseId'])?.toLowerCase() ?? '')
+        .where((value) => value.isNotEmpty)
+        .toSet();
+
+    final batch = _db.batch();
+    for (final doc in docs) {
+      final courseId = _string(doc.data()['courseId']) ?? doc.id;
+      if (courseId.isEmpty) continue;
+      if (existingCourseIds.contains(courseId.toLowerCase())) continue;
+      batch.set(
+        _db.collection('enrollments').doc('enr_${studentId}_$courseId'),
+        {
+          'studentId': studentId,
+          'courseId': courseId,
+          'semester': semester,
+          'status': 'active',
+          'enrolledAt': FieldValue.serverTimestamp(),
+          'source': semester == 1 ? 'auto_initial_semester' : 'auto_current_semester',
+        },
+        SetOptions(merge: true),
+      );
+    }
+    await batch.commit();
+  }
+
+  Future<void> seedInitialSemesterEnrollments({
+    required String studentId,
+    required String department,
+  }) async {
+    await seedSemesterEnrollments(
+      studentId: studentId,
+      department: department,
+      semester: 1,
+    );
+  }
+
+  Future<void> _ensureSemesterOneCatalog() async {
+    final existingSnap = await _db.collection('courses').get();
+    final existingKeys = <String>{};
+    for (final doc in existingSnap.docs) {
+      final data = doc.data();
+      existingKeys.addAll({
+        doc.id.trim().toLowerCase(),
+        _string(data['courseId'])?.toLowerCase() ?? '',
+        _string(data['courseCode'])?.toLowerCase() ?? '',
+        _string(data['code'])?.toLowerCase() ?? '',
+        _string(data['course_code'])?.toLowerCase() ?? '',
+      }.where((value) => value.isNotEmpty));
+    }
+
+    Future<void> seedCourses(List<Map<String, dynamic>> courses) async {
+      final batch = _db.batch();
+      var ops = 0;
+      for (final course in courses) {
+        final courseId = (course['courseId'] as String).trim().toLowerCase();
+        final courseCode = (course['courseCode'] as String).trim().toLowerCase();
+        final legacyCode = (course['code'] as String).trim().toLowerCase();
+        if (existingKeys.contains(courseId) || existingKeys.contains(courseCode) || existingKeys.contains(legacyCode)) {
+          continue;
+        }
+
+        batch.set(
+          _db.collection('courses').doc(course['courseId'] as String),
+          {
+            ...course,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        existingKeys.add(courseId);
+        existingKeys.add(courseCode);
+        existingKeys.add(legacyCode);
+        ops += 1;
+      }
+
+      if (ops > 0) {
+        await batch.commit();
+      }
+    }
+
+    await seedCourses([
+      _catalogCourse('cse101', 'CS101', 'Programming Fundamentals', 4, 'CSE'),
+      _catalogCourse('cse102', 'CS102', 'Computer Systems Basics', 4, 'CSE'),
+      _catalogCourse('mat101', 'MA101', 'Engineering Mathematics I', 4, 'CSE'),
+      _catalogCourse('eng101', 'EN101', 'Technical English', 2, 'CSE'),
+      _catalogCourse('phy101', 'PH101', 'Applied Physics', 3, 'CSE'),
+      _catalogCourse('cse103', 'CS103', 'Programming Lab', 2, 'CSE'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse201', 'CS201', 'Discrete Mathematics', 4, 'CSE'),
+      _catalogCourse('cse202', 'CS202', 'Programming in C', 4, 'CSE'),
+      _catalogCourse('mat201', 'MA201', 'Engineering Mathematics II', 4, 'CSE'),
+      _catalogCourse('phy201', 'PH201', 'Engineering Physics', 3, 'CSE'),
+      _catalogCourse('eng201', 'EN201', 'Communication Skills', 2, 'CSE'),
+      _catalogCourse('cse204', 'CS204', 'C Programming Lab', 2, 'CSE'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse301', 'CS301', 'Data Structures & Algorithms', 4, 'CSE'),
+      _catalogCourse('cse302', 'CS302', 'Operating Systems', 4, 'CSE'),
+      _catalogCourse('cse303', 'CS303', 'Database Management Systems', 4, 'CSE'),
+      _catalogCourse('mat301', 'MA301', 'Probability and Statistics', 4, 'CSE'),
+      _catalogCourse('eng301', 'EN301', 'Technical Writing', 2, 'CSE'),
+      _catalogCourse('cse304', 'CS304', 'Algorithms Lab', 2, 'CSE'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse401', 'CS401', 'Computer Networks', 4, 'CSE'),
+      _catalogCourse('cse402', 'CS402', 'Compiler Design', 4, 'CSE'),
+      _catalogCourse('cse403', 'CS403', 'Software Engineering', 3, 'CSE'),
+      _catalogCourse('cse404', 'CS404', 'Information Security', 4, 'CSE'),
+      _catalogCourse('cse405', 'CS405', 'Data Warehousing and Mining', 3, 'CSE'),
+      _catalogCourse('cse406', 'CS406', 'Systems Lab', 2, 'CSE'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse301', 'CS301', 'Data Structures & Algorithms', 4, 'CSE'),
+      _catalogCourse('cse302', 'CS302', 'Operating Systems', 4, 'CSE'),
+      _catalogCourse('cse303', 'CS303', 'Database Management Systems', 4, 'CSE'),
+      _catalogCourse('ece305', 'EC305', 'Digital Signal Processing', 4, 'ECE'),
+      _catalogCourse('aiml306', 'AI306', 'Machine Learning', 4, 'AI-DS'),
+      _catalogCourse('aiml307', 'AI307', 'Artificial Intelligence', 3, 'AI-DS'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse601', 'CS601', 'Computer Networks', 4, 'CSE'),
+      _catalogCourse('cse602', 'CS602', 'Compiler Design', 4, 'CSE'),
+      _catalogCourse('cse603', 'CS603', 'Software Engineering', 3, 'CSE'),
+      _catalogCourse('cse604', 'CS604', 'Information Security', 4, 'CSE'),
+      _catalogCourse('cse605', 'CS605', 'Data Warehousing and Mining', 3, 'CSE'),
+      _catalogCourse('cse606', 'CS606', 'Cloud Lab', 2, 'CSE'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse701', 'CS701', 'Artificial Intelligence Systems', 4, 'CSE'),
+      _catalogCourse('cse702', 'CS702', 'Advanced Cloud Platforms', 4, 'CSE'),
+      _catalogCourse('cse703', 'CS703', 'Distributed Systems', 4, 'CSE'),
+      _catalogCourse('cse704', 'CS704', 'Cyber Security Operations', 4, 'CSE'),
+      _catalogCourse('cse705', 'CS705', 'Project Management', 3, 'CSE'),
+      _catalogCourse('cse706', 'CS706', 'Research Lab', 2, 'CSE'),
+    ]);
+
+    await seedCourses([
+      _catalogCourse('cse801', 'CS801', 'Capstone Project', 6, 'CSE'),
+      _catalogCourse('cse802', 'CS802', 'Enterprise Architecture', 4, 'CSE'),
+      _catalogCourse('cse803', 'CS803', 'DevOps and Automation', 4, 'CSE'),
+      _catalogCourse('cse804', 'CS804', 'Seminar and Research', 2, 'CSE'),
+      _catalogCourse('cse805', 'CS805', 'Industry Internship', 4, 'CSE'),
+      _catalogCourse('cse806', 'CS806', 'Project Lab', 2, 'CSE'),
+    ]);
+  }
+
+  Map<String, dynamic> _catalogCourse(String courseId, String courseCode, String courseName, int credits, String department) {
+    return {
+      'courseId': courseId,
+      'courseCode': courseCode,
+      'courseName': courseName,
+      'title': courseName,
+      'code': courseCode,
+      'course_code': courseCode,
+      'course_name': courseName,
+      'description': '$courseName course.',
+      'credits': credits,
+      'facultyId': '',
+      'facultyName': '',
+      'department': department,
+      'semester': _semesterFromCourseId(courseId),
+      'semesterLabel': 'Semester ${_semesterFromCourseId(courseId)}',
+    };
+  }
+
+  int _semesterFromCourseId(String courseId) {
+    final match = RegExp(r'(\d{3})').firstMatch(courseId);
+    if (match == null) return 1;
+    final digits = match.group(1)!;
+    final semester = int.tryParse(digits[0]) ?? 1;
+    return semester >= 1 && semester <= 8 ? semester : 1;
+  }
+
+  Future<void> _removeGeneratedSemesterFiveCatalog() async {
+    await _removeEmptySemesterCourses(
+      semester: 5,
+      keepCourseIds: {
+        'cse301',
+        'cse302',
+        'cse303',
+        'ece305',
+        'aiml306',
+        'aiml307',
+      },
+    );
+  }
+
+  Future<List<String>> _removeEmptySemesterCourses({
+    required int semester,
+    Set<String> keepCourseIds = const <String>{},
+  }) async {
+    final coursesSnap = await _db.collection('courses').get();
+    final semesterCourses = coursesSnap.docs
+        .map(AdminCourseItem.fromDoc)
+        .where((course) => course.semesterNumber == semester)
+        .where((course) => !keepCourseIds.contains(course.id))
+        .toList();
+
+    if (semesterCourses.isEmpty) {
+      return const [];
+    }
+
+    final courseIds = semesterCourses.map((course) => course.id).toSet().toList();
+    final linkedCourseIds = <String>{};
+
+    Future<void> markLinkedCourseIds(String collection, {String field = 'courseId'}) async {
+      for (final chunk in _chunk(courseIds, 10)) {
+        final snap = await _db.collection(collection).where(field, whereIn: chunk).get();
+        if (snap.docs.isEmpty) continue;
+        for (final doc in snap.docs) {
+          final id = _string(doc.data()[field]) ?? '';
+          if (id.isNotEmpty) {
+            linkedCourseIds.add(id);
+          }
+        }
+      }
+    }
+
+    Future<void> markLinkedCourseIdsFromForms() async {
+      final formsSnap = await _db.collection('registrationForms').get();
+      for (final doc in formsSnap.docs) {
+        final data = doc.data();
+        final formCourseIds = <String>[
+          ..._stringList(data['availableCourses']),
+          ..._stringList(data['availableCourseIds']),
+          ..._stringList(data['backlogCourses']),
+          ..._stringList(data['backlogCourseIds']),
+        ];
+        for (final rawId in formCourseIds) {
+          if (courseIds.contains(rawId)) {
+            linkedCourseIds.add(rawId);
+          }
+        }
+      }
+    }
+
+    await markLinkedCourseIds('enrollments');
+    await markLinkedCourseIds('attendance');
+    await markLinkedCourseIds('assignments');
+    await markLinkedCourseIds('materials');
+    await markLinkedCourseIds('results');
+    await markLinkedCourseIds('notifications');
+    await markLinkedCourseIds('upcomingEnrollments');
+    await markLinkedCourseIds('quizzes', field: 'course_id');
+    await markLinkedCourseIdsFromForms();
+
+    final removableCourses = semesterCourses
+        .where((course) => !linkedCourseIds.contains(course.id))
+        .toList();
+    if (removableCourses.isEmpty) {
+      return const [];
+    }
+
+    for (final chunk in _chunk(removableCourses.map((course) => course.id).toList(), 400)) {
+      final batch = _db.batch();
+      for (final courseId in chunk) {
+        batch.delete(_db.collection('courses').doc(courseId));
+      }
+      await batch.commit();
+    }
+
+    return removableCourses.map((course) => course.id).toList();
+  }
+
+  Future<void> deleteCourse(String courseId) async {
+    final normalizedCourseId = courseId.trim();
+    if (normalizedCourseId.isEmpty) {
+      throw Exception('Course id is required.');
+    }
+
+    final courseDoc = await _db.collection('courses').doc(normalizedCourseId).get();
+    if (!courseDoc.exists) {
+      throw Exception('Course not found.');
+    }
+
+    final relatedCourseIds = {normalizedCourseId};
+
+    Future<void> deleteByCourseField(String collection, {String field = 'courseId'}) async {
+      for (final chunk in _chunk(relatedCourseIds.toList(), 10)) {
+        final snap = await _db.collection(collection).where(field, whereIn: chunk).get();
+        if (snap.docs.isEmpty) continue;
+        final batch = _db.batch();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+    }
+
+    Future<void> deleteAssignmentSubmissions(List<String> assignmentIds) async {
+      for (final chunk in _chunk(assignmentIds, 10)) {
+        final snap = await _db.collection('submissions').where('assignment_id', whereIn: chunk).get();
+        if (snap.docs.isEmpty) continue;
+        final batch = _db.batch();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+    }
+
+    Future<void> deleteQuizChildren(List<String> quizIds) async {
+      for (final chunk in _chunk(quizIds, 10)) {
+        final questionsSnap = await _db.collection('quiz_questions').where('quiz_id', whereIn: chunk).get();
+        if (questionsSnap.docs.isNotEmpty) {
+          final batch = _db.batch();
+          for (final doc in questionsSnap.docs) {
+            batch.delete(doc.reference);
+          }
+          await batch.commit();
+        }
+
+        final submissionsSnap = await _db.collection('quiz_submissions').where('quiz_id', whereIn: chunk).get();
+        if (submissionsSnap.docs.isNotEmpty) {
+          final batch = _db.batch();
+          for (final doc in submissionsSnap.docs) {
+            batch.delete(doc.reference);
+          }
+          await batch.commit();
+        }
+      }
+    }
+
+    final assignmentsSnap = await _db.collection('assignments').where('courseId', isEqualTo: normalizedCourseId).get();
+    final assignmentIds = assignmentsSnap.docs.map((doc) => doc.id).toList();
+    if (assignmentIds.isNotEmpty) {
+      await deleteAssignmentSubmissions(assignmentIds);
+      await _deleteRefs(assignmentsSnap.docs.map((doc) => doc.reference).toList());
+    }
+
+    final quizzesSnap = await _db.collection('quizzes').where('course_id', isEqualTo: normalizedCourseId).get();
+    final quizIds = quizzesSnap.docs.map((doc) => doc.id).toList();
+    if (quizIds.isNotEmpty) {
+      await deleteQuizChildren(quizIds);
+      await _deleteRefs(quizzesSnap.docs.map((doc) => doc.reference).toList());
+    }
+
+    await deleteByCourseField('enrollments');
+    await deleteByCourseField('attendance');
+    await deleteByCourseField('materials');
+    await deleteByCourseField('notifications');
+    await deleteByCourseField('results');
+    await deleteByCourseField('upcomingEnrollments');
+
+    final registrationsToDelete = <DocumentReference<Map<String, dynamic>>>{};
+    for (final chunk in _chunk([normalizedCourseId], 10)) {
+      final selectedSnap = await _db.collection('registrations').where('selectedCourses', arrayContainsAny: chunk).get();
+      final backlogSnap = await _db.collection('registrations').where('backlogCourses', arrayContainsAny: chunk).get();
+      for (final doc in [...selectedSnap.docs, ...backlogSnap.docs]) {
+        registrationsToDelete.add(doc.reference);
+      }
+    }
+    if (registrationsToDelete.isNotEmpty) {
+      await _deleteRefs(registrationsToDelete.toList());
+    }
+
+    final formsSnap = await _db.collection('registrationForms').get();
+    for (final doc in formsSnap.docs) {
+      final data = doc.data();
+      final availableCourses = _stringList(data['availableCourses']);
+      final availableCourseIds = _stringList(data['availableCourseIds']);
+      final backlogCourses = _stringList(data['backlogCourses']);
+      final backlogCourseIds = _stringList(data['backlogCourseIds']);
+
+      final updatedAvailableCourses = availableCourses.where((id) => id != normalizedCourseId).toList();
+      final updatedAvailableCourseIds = availableCourseIds.where((id) => id != normalizedCourseId).toList();
+      final updatedBacklogCourses = backlogCourses.where((id) => id != normalizedCourseId).toList();
+      final updatedBacklogCourseIds = backlogCourseIds.where((id) => id != normalizedCourseId).toList();
+
+      if (updatedAvailableCourses.length == availableCourses.length &&
+          updatedAvailableCourseIds.length == availableCourseIds.length &&
+          updatedBacklogCourses.length == backlogCourses.length &&
+          updatedBacklogCourseIds.length == backlogCourseIds.length) {
+        continue;
+      }
+
+      await doc.reference.set(
+        {
+          'availableCourses': updatedAvailableCourses,
+          'availableCourseIds': updatedAvailableCourseIds,
+          'backlogCourses': updatedBacklogCourses,
+          'backlogCourseIds': updatedBacklogCourseIds,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    await _db.collection('courses').doc(normalizedCourseId).delete();
+  }
+
   Stream<List<AdminCourseItem>> streamCourses() {
+    unawaited(_ensureSemesterOneCatalog());
     return _db.collection('courses').snapshots().map((snap) {
       final list = snap.docs.map(AdminCourseItem.fromDoc).toList();
-      list.sort((a, b) => a.code.toLowerCase().compareTo(b.code.toLowerCase()));
+      list.sort((a, b) {
+        final semesterCompare = a.semesterNumber.compareTo(b.semesterNumber);
+        if (semesterCompare != 0) return semesterCompare;
+        return a.code.toLowerCase().compareTo(b.code.toLowerCase());
+      });
       return list;
     });
   }
@@ -761,6 +1441,9 @@ class AdminModuleService {
     final controller = StreamController<List<CourseReportItem>>.broadcast();
     final subscriptions = <StreamSubscription<dynamic>>[];
     var closed = false;
+    var refreshInFlight = false;
+    var refreshQueued = false;
+    Timer? debounceTimer;
 
     Future<void> emitSnapshot() async {
       if (closed || controller.isClosed) return;
@@ -776,10 +1459,36 @@ class AdminModuleService {
       }
     }
 
+    void scheduleEmitSnapshot() {
+      if (closed || controller.isClosed) return;
+      refreshQueued = true;
+      debounceTimer?.cancel();
+      debounceTimer = Timer(const Duration(milliseconds: 120), () {
+        if (closed || controller.isClosed) return;
+        if (refreshInFlight) {
+          refreshQueued = true;
+          return;
+        }
+
+        refreshQueued = false;
+        refreshInFlight = true;
+        unawaited(() async {
+          try {
+            await emitSnapshot();
+          } finally {
+            refreshInFlight = false;
+            if (!closed && !controller.isClosed && refreshQueued) {
+              scheduleEmitSnapshot();
+            }
+          }
+        }());
+      });
+    }
+
     void startListeners() {
-      subscriptions.add(_db.collection('courses').snapshots().listen((_) => emitSnapshot()));
-      subscriptions.add(_db.collection('enrollments').snapshots().listen((_) => emitSnapshot()));
-      subscriptions.add(_db.collection('attendance').snapshots().listen((_) => emitSnapshot()));
+      subscriptions.add(_db.collection('courses').snapshots().listen((_) => scheduleEmitSnapshot()));
+      subscriptions.add(_db.collection('enrollments').snapshots().listen((_) => scheduleEmitSnapshot()));
+      subscriptions.add(_db.collection('attendance').snapshots().listen((_) => scheduleEmitSnapshot()));
     }
 
     controller.onListen = () {
@@ -792,6 +1501,7 @@ class AdminModuleService {
       for (final sub in subscriptions) {
         unawaited(sub.cancel());
       }
+      debounceTimer?.cancel();
       unawaited(controller.close());
     };
 
@@ -888,11 +1598,28 @@ class AdminModuleService {
     return int.tryParse(value.toString());
   }
 
-  static DateTime? _date(dynamic value) {
-    if (value == null) return null;
-    if (value is Timestamp) return value.toDate();
-    if (value is DateTime) return value;
-    return null;
+  static List<String> _stringList(dynamic value) {
+    if (value is List) {
+      return value
+          .whereType<dynamic>()
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
+  Future<void> _deleteRefs(List<DocumentReference<Map<String, dynamic>>> refs) async {
+    if (refs.isEmpty) return;
+
+    for (var i = 0; i < refs.length; i += 400) {
+      final batch = _db.batch();
+      final end = i + 400 > refs.length ? refs.length : i + 400;
+      for (final ref in refs.sublist(i, end)) {
+        batch.delete(ref);
+      }
+      await batch.commit();
+    }
   }
 
   List<List<T>> _chunk<T>(List<T> values, int size) {

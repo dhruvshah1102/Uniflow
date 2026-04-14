@@ -27,6 +27,7 @@ class _CreateCourseTabState extends State<CreateCourseTab> {
   Future<List<AdminUserItem>>? _facultyFuture;
   String? _facultyId;
   bool _submitting = false;
+  String? _deletingCourseId;
 
   @override
   void initState() {
@@ -100,6 +101,51 @@ class _CreateCourseTabState extends State<CreateCourseTab> {
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
+      }
+    }
+  }
+
+  Future<void> _deleteCourse(AdminCourseItem course) async {
+    if (_deletingCourseId != null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete course?'),
+        content: Text(
+          'This will permanently delete ${course.courseName} and its related assignments, quizzes, materials, enrollments, and results.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _deletingCourseId = course.id);
+    try {
+      await widget.service.deleteCourse(course.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${course.courseName} deleted successfully.')),
+      );
+      await widget.onChanged();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _deletingCourseId = null);
       }
     }
   }
@@ -223,7 +269,7 @@ class _CreateCourseTabState extends State<CreateCourseTab> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _facultyId,
+                      initialValue: _facultyId,
                       decoration: const InputDecoration(
                         labelText: 'Faculty Selection',
                       ),
@@ -302,7 +348,7 @@ class _CreateCourseTabState extends State<CreateCourseTab> {
                             child: Row(
                               children: [
                                 CircleAvatar(
-                                  backgroundColor: AppColors.primaryDark.withOpacity(0.12),
+                                  backgroundColor: AppColors.primaryDark.withValues(alpha: 0.12),
                                   child: Text(course.code.isNotEmpty ? course.code[0] : '?', style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
                                 ),
                                 const SizedBox(width: 12),
@@ -318,6 +364,19 @@ class _CreateCourseTabState extends State<CreateCourseTab> {
                                       ),
                                     ],
                                   ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  tooltip: 'Delete course',
+                                  onPressed: _deletingCourseId == course.id ? null : () => _deleteCourse(course),
+                                  icon: _deletingCourseId == course.id
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.delete_outline),
+                                  color: AppColors.danger,
                                 ),
                               ],
                             ),

@@ -152,14 +152,22 @@ class _UsersTab extends StatelessWidget {
   final Future<void> Function() onChanged;
   const _UsersTab({required this.service, required this.roleFilter, required this.onFilterChanged, required this.onChanged});
 
-  Future<void> _addQuickUser() async {
+  Future<void> _addQuickUser(BuildContext context) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
-    await service.addOrUpdateUser(
+    final email = 'student.$ts@iiitn.ac.in';
+    const password = 'Uniflow@1234';
+    await service.createFirebaseAuthUser(
       name: 'Student $ts',
-      email: 'student.$ts@iiitn.ac.in',
+      email: email,
+      password: password,
       role: 'student',
       department: 'CSE',
-      semester: 5,
+      semester: 1,
+      division: 'A',
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Created $email with temporary password $password')),
     );
     await onChanged();
   }
@@ -180,7 +188,7 @@ class _UsersTab extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _addQuickUser,
+                  onPressed: () => _addQuickUser(context),
                   icon: const Icon(Icons.person_add_alt_1),
                   label: const Text('Add User'),
                 ),

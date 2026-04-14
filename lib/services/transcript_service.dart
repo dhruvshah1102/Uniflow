@@ -31,25 +31,11 @@ class TranscriptService {
       transcriptsSub = _db.collection('transcripts')
           .where('studentId', isEqualTo: studentId)
           .snapshots().listen((snap) async {
-        
-        bool needsReseed = snap.docs.isEmpty;
-        if (!needsReseed) {
-           final firstDoc = snap.docs.first.data();
-           final courses = firstDoc['courses'] as List<dynamic>? ?? [];
-           if (courses.isNotEmpty && (courses[0]['marks'] == null || courses[0]['marks'] == 0)) {
-               needsReseed = true;
-           }
-        }
-
-        if (needsReseed) {
-           await _seedMockTranscripts(studentId, currentSemester);
-           return;
-        }
-
         pastSemesters.clear();
         for (var doc in snap.docs) {
           final data = doc.data();
           final sem = data['semester'] as int? ?? 0;
+          if (sem >= currentSemester) continue;
           final courses = data['courses'] as List<dynamic>? ?? [];
           for (var c in courses) {
              final cm = c as Map<String, dynamic>;
@@ -77,7 +63,7 @@ class TranscriptService {
         
         currentSemResults = snap.docs
             .map((doc) => AcademicResultItem.fromMap(doc.data(), doc.id))
-            .where((item) => item.semester == currentSemester) // Ensure only current semester
+            .where((item) => item.semester == currentSemester && item.status == 'published')
             .toList();
         emit();
       });

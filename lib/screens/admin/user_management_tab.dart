@@ -22,6 +22,236 @@ class UserManagementTab extends StatefulWidget {
 class _UserManagementTabState extends State<UserManagementTab> {
   bool _normalizing = false;
 
+  Future<void> _showCreateUserSheet() async {
+    if (_normalizing) return;
+
+    final formKey = GlobalKey<FormState>();
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final passwordCtrl = TextEditingController();
+    final departmentCtrl = TextEditingController(text: 'CSE');
+    final semesterCtrl = TextEditingController(text: '1');
+    final divisionCtrl = TextEditingController(text: 'A');
+    String role = 'student';
+    var saving = false;
+    var completed = false;
+    String? feedbackMessage;
+    bool feedbackIsError = false;
+
+    try {
+      final created = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (sheetContext) {
+          return StatefulBuilder(
+            builder: (sheetContext, setSheetState) {
+              Future<void> submit() async {
+                if (saving || !(formKey.currentState?.validate() ?? false)) return;
+                setSheetState(() {
+                  saving = true;
+                  feedbackMessage = null;
+                  feedbackIsError = false;
+                });
+                var succeeded = false;
+                try {
+                  await widget.service.createFirebaseAuthUser(
+                    name: nameCtrl.text.trim(),
+                    email: emailCtrl.text.trim(),
+                    password: passwordCtrl.text,
+                    role: role,
+                    department: departmentCtrl.text.trim(),
+                    semester: role == 'student' ? int.tryParse(semesterCtrl.text.trim()) ?? 1 : null,
+                    division: role == 'student' ? divisionCtrl.text.trim() : null,
+                  );
+                  succeeded = true;
+                  if (!sheetContext.mounted) return;
+                  setSheetState(() {
+                    saving = false;
+                    completed = true;
+                    feedbackMessage = 'User created successfully. You can now close this panel.';
+                    feedbackIsError = false;
+                  });
+                  try {
+                    await widget.onChanged();
+                  } catch (_) {
+                    // The user was created already; refresh failures should not hide that result.
+                  }
+                } catch (e) {
+                  final message = e.toString().replaceFirst('Exception: ', '');
+                  if (!sheetContext.mounted) return;
+                  setSheetState(() {
+                    saving = false;
+                    completed = false;
+                    feedbackMessage = message;
+                    feedbackIsError = true;
+                  });
+                } finally {
+                  if (!succeeded && sheetContext.mounted) {
+                    setSheetState(() => saving = false);
+                  }
+                }
+              }
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 12,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+                ),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Create User',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primaryDark,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (feedbackMessage != null) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: feedbackIsError ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: feedbackIsError ? const Color(0xFFE57373) : const Color(0xFF81C784),
+                              ),
+                            ),
+                            child: Text(
+                              feedbackMessage!,
+                              style: TextStyle(
+                                color: feedbackIsError ? const Color(0xFFC62828) : const Color(0xFF1B5E20),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        TextFormField(
+                          controller: nameCtrl,
+                          decoration: const InputDecoration(labelText: 'Name'),
+                          validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter a name.' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(labelText: 'Email'),
+                          validator: (value) {
+                            final text = (value ?? '').trim();
+                            if (text.isEmpty) return 'Enter an email.';
+                            if (!text.contains('@')) return 'Enter a valid email.';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: passwordCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(labelText: 'Password'),
+                          validator: (value) {
+                            if ((value ?? '').length < 6) return 'Password must be at least 6 characters.';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: role,
+                          decoration: const InputDecoration(labelText: 'Role'),
+                          items: const [
+                            DropdownMenuItem(value: 'student', child: Text('Student')),
+                            DropdownMenuItem(value: 'faculty', child: Text('Faculty')),
+                          ],
+                          onChanged: saving ? null : (value) => setSheetState(() => role = value ?? 'student'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: departmentCtrl,
+                          decoration: const InputDecoration(labelText: 'Department'),
+                          validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter a department.' : null,
+                        ),
+                        if (role == 'student') ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                              child: TextFormField(
+                                  controller: semesterCtrl,
+                                  keyboardType: TextInputType.number,
+                                  readOnly: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Starting Semester',
+                                    helperText: 'Fixed at 1 for all newly created students.',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: divisionCtrl,
+                                  decoration: const InputDecoration(labelText: 'Division'),
+                                  validator: (value) => (value == null || value.trim().isEmpty) ? 'Enter division.' : null,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: saving
+                                ? null
+                                : completed
+                                    ? () => Navigator.of(sheetContext).pop(true)
+                                    : submit,
+                            child: Text(
+                              saving
+                                  ? 'Creating...'
+                                  : completed
+                                      ? 'Close'
+                                      : 'Create User',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+
+      if (created == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User created successfully.')),
+        );
+      }
+    } finally {
+      nameCtrl.dispose();
+      emailCtrl.dispose();
+      passwordCtrl.dispose();
+      departmentCtrl.dispose();
+      semesterCtrl.dispose();
+      divisionCtrl.dispose();
+    }
+  }
+
   Future<void> _normalizeUsers() async {
     if (_normalizing) return;
     setState(() => _normalizing = true);
@@ -132,10 +362,21 @@ class _UserManagementTabState extends State<UserManagementTab> {
             const SizedBox(height: 14),
             Align(
               alignment: Alignment.centerRight,
-              child: IconButton(
-                tooltip: 'Refresh',
-                onPressed: widget.onChanged,
-                icon: const Icon(Icons.refresh),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _showCreateUserSheet,
+                    icon: const Icon(Icons.person_add_alt_1),
+                    label: const Text('Create User'),
+                  ),
+                  const SizedBox(width: 10),
+                  IconButton(
+                    tooltip: 'Refresh',
+                    onPressed: widget.onChanged,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -176,7 +417,14 @@ class _UserManagementTabState extends State<UserManagementTab> {
                                           ),
                                           subtitle: Text('${divisionEntry.value.length} students'),
                                           children: divisionEntry.value
-                                              .map((student) => _UserRow(item: student))
+                                              .map(
+                                                (student) => _UserRow(
+                                                  item: student,
+                                                  service: widget.service,
+                                                  onDeleted: widget.onChanged,
+                                                  adminUid: widget.adminUid,
+                                                ),
+                                              )
                                               .toList(),
                                         ),
                                       ),
@@ -210,7 +458,16 @@ class _UserManagementTabState extends State<UserManagementTab> {
                                   style: const TextStyle(fontWeight: FontWeight.w800),
                                 ),
                                 subtitle: Text('${departmentEntry.value.length} faculty members'),
-                                children: departmentEntry.value.map((item) => _UserRow(item: item)).toList(),
+                                children: departmentEntry.value
+                                    .map(
+                                      (item) => _UserRow(
+                                        item: item,
+                                        service: widget.service,
+                                        onDeleted: widget.onChanged,
+                                        adminUid: widget.adminUid,
+                                      ),
+                                    )
+                                    .toList(),
                               ),
                             ),
                           )
@@ -224,7 +481,16 @@ class _UserManagementTabState extends State<UserManagementTab> {
               child: admins.isEmpty
                   ? const _EmptyState(message: 'No admin records found.')
                   : Column(
-                      children: admins.map((item) => _UserRow(item: item)).toList(),
+                      children: admins
+                          .map(
+                            (item) => _UserRow(
+                              item: item,
+                              service: widget.service,
+                              onDeleted: widget.onChanged,
+                              adminUid: widget.adminUid,
+                            ),
+                          )
+                          .toList(),
                     ),
             ),
           ],
@@ -331,8 +597,61 @@ class _SectionCard extends StatelessWidget {
 
 class _UserRow extends StatelessWidget {
   final AdminUserItem item;
+  final AdminModuleService service;
+  final Future<void> Function() onDeleted;
+  final String adminUid;
 
-  const _UserRow({required this.item});
+  const _UserRow({
+    required this.item,
+    required this.service,
+    required this.onDeleted,
+    required this.adminUid,
+  });
+
+  Future<void> _deleteUser(BuildContext context) async {
+    if (item.id == adminUid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You cannot delete the currently signed-in admin account.')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete user?'),
+        content: Text(
+          'This removes ${item.name} from Firestore and clears linked academic records. Firebase Auth deletion must be done separately from the app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await service.deleteUserData(userId: item.id, role: item.role);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${item.name} deleted from Firestore.')),
+      );
+      await onDeleted();
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -379,6 +698,12 @@ class _UserRow extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            tooltip: 'Delete user',
+            onPressed: () => _deleteUser(context),
+            icon: const Icon(Icons.delete_outline),
+            color: AppColors.danger,
           ),
           Text(
             item.role.toUpperCase(),

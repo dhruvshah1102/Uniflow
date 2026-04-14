@@ -1,8 +1,5 @@
-import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import '../models/academic_result.dart';
 import '../models/student_model.dart';
@@ -15,15 +12,18 @@ class PdfHelper {
     required StudentAcademicRecord record,
   }) async {
     final pdf = pw.Document();
+    final historicalSemesters = record.transcript.where((sem) => sem.semester <= 4).toList();
+    final historicalResults = historicalSemesters.expand((sem) => sem.results).toList();
+    final historicalCgpa = calculateCgpa(historicalResults);
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
-          _buildHeader(user, student, record),
+          _buildHeader(user, student, historicalCgpa),
           pw.SizedBox(height: 20),
-          ..._buildSemesters(record),
+          ..._buildSemesters(historicalSemesters),
           pw.Divider(),
           _buildFooter(),
         ],
@@ -34,7 +34,7 @@ class PdfHelper {
         onLayout: (PdfPageFormat format) async => pdf.save());
   }
 
-  static pw.Widget _buildHeader(UserModel user, StudentModel student, StudentAcademicRecord record) {
+  static pw.Widget _buildHeader(UserModel user, StudentModel student, double cgpa) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -62,7 +62,7 @@ class PdfHelper {
               child: pw.Column(
                 children: [
                   pw.Text('CGPA', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  pw.Text(record.cgpa.toStringAsFixed(2), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1E3A8A'))),
+                  pw.Text(cgpa.toStringAsFixed(2), style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#1E3A8A'))),
                 ]
               )
             )
@@ -72,21 +72,12 @@ class PdfHelper {
     );
   }
 
-  static List<pw.Widget> _buildSemesters(StudentAcademicRecord record) {
+  static List<pw.Widget> _buildSemesters(List<SemesterAcademicSummary> semesters) {
     final widgets = <pw.Widget>[];
 
-    for (final sem in record.transcript) {
+    for (final sem in semesters) {
       widgets.add(_buildSemesterTable(sem.semester, sem.sgpa, sem.results));
       widgets.add(pw.SizedBox(height: 20));
-    }
-
-    if (record.currentSemesterResults.isNotEmpty) {
-      widgets.add(_buildSemesterTable(
-        record.currentSemesterResults.first.semester,
-        calculateSgpa(record.currentSemesterResults),
-        record.currentSemesterResults,
-        isCurrent: true,
-      ));
     }
 
     return widgets;

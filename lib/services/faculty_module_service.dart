@@ -7,6 +7,7 @@ import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/assignment.dart';
@@ -153,6 +154,9 @@ class FacultyModuleService {
     final courseSubscriptions = <StreamSubscription<dynamic>>[];
     var closed = false;
     var currentCourseIds = <String>{};
+    var refreshInFlight = false;
+    var refreshQueued = false;
+    Timer? debounceTimer;
 
     Future<void> emitSnapshot() async {
       if (closed || controller.isClosed) return;
@@ -169,6 +173,32 @@ class FacultyModuleService {
           controller.addError(error, stackTrace);
         }
       }
+    }
+
+    void scheduleEmitSnapshot() {
+      if (closed || controller.isClosed) return;
+      refreshQueued = true;
+      debounceTimer?.cancel();
+      debounceTimer = Timer(const Duration(milliseconds: 120), () {
+        if (closed || controller.isClosed) return;
+        if (refreshInFlight) {
+          refreshQueued = true;
+          return;
+        }
+
+        refreshQueued = false;
+        refreshInFlight = true;
+        unawaited(() async {
+          try {
+            await emitSnapshot();
+          } finally {
+            refreshInFlight = false;
+            if (!closed && !controller.isClosed && refreshQueued) {
+              scheduleEmitSnapshot();
+            }
+          }
+        }());
+      });
     }
 
     Future<void> resetCourseListeners(Iterable<String> courseIds) async {
@@ -196,35 +226,35 @@ class FacultyModuleService {
               .collection('courses')
               .where(FieldPath.documentId, whereIn: batch)
               .snapshots()
-              .listen((_) => emitSnapshot()),
+              .listen((_) => scheduleEmitSnapshot()),
         );
         courseSubscriptions.add(
           _db
               .collection('assignments')
               .where('courseId', whereIn: batch)
               .snapshots()
-              .listen((_) => emitSnapshot()),
+              .listen((_) => scheduleEmitSnapshot()),
         );
         courseSubscriptions.add(
           _db
               .collection('quizzes')
               .where('course_id', whereIn: batch)
               .snapshots()
-              .listen((_) => emitSnapshot()),
+              .listen((_) => scheduleEmitSnapshot()),
         );
         courseSubscriptions.add(
           _db
               .collection('materials')
               .where('courseId', whereIn: batch)
               .snapshots()
-              .listen((_) => emitSnapshot()),
+              .listen((_) => scheduleEmitSnapshot()),
         );
         courseSubscriptions.add(
           _db
               .collection('enrollments')
               .where('courseId', whereIn: batch)
               .snapshots()
-              .listen((_) => emitSnapshot()),
+              .listen((_) => scheduleEmitSnapshot()),
         );
       }
     }
@@ -242,7 +272,7 @@ class FacultyModuleService {
               .listen((snapshot) async {
                 final courseIds = snapshot.docs.map((doc) => doc.id).toSet();
                 await resetCourseListeners(courseIds);
-                await emitSnapshot();
+                scheduleEmitSnapshot();
               }),
         );
         fixedSubscriptions.add(
@@ -250,7 +280,7 @@ class FacultyModuleService {
               .collection('notifications')
               .where('createdBy', whereIn: batch)
               .snapshots()
-              .listen((_) => emitSnapshot()),
+              .listen((_) => scheduleEmitSnapshot()),
         );
       }
     }
@@ -268,6 +298,7 @@ class FacultyModuleService {
       for (final sub in courseSubscriptions) {
         unawaited(sub.cancel());
       }
+      debounceTimer?.cancel();
       unawaited(controller.close());
     };
 
@@ -410,7 +441,7 @@ class FacultyModuleService {
       'type': 'material',
       'audience': 'course',
       'courseId': courseId,
-      'route': '/student/dashboard?tab=courses',
+      'route': '/student/course/$courseId?tab=materials&materialId=${docRef.id}',
       'sourceId': docRef.id,
       'sourceCollection': 'materials',
       'createdBy': facultyId,
@@ -688,7 +719,8 @@ class FacultyModuleService {
       'type': 'assignment',
       'audience': 'course',
       'courseId': courseId,
-      'route': '/student/dashboard?tab=tasks',
+      'route': '/student/course/$courseId?tab=assignments&assignmentId=${assignmentRef.id}',
+      'assignmentId': assignmentRef.id,
       'sourceId': assignmentRef.id,
       'sourceCollection': 'assignments',
       'createdBy': facultyId,
@@ -739,7 +771,8 @@ class FacultyModuleService {
       'type': 'quiz',
       'audience': 'course',
       'courseId': courseId,
-      'route': '/student/dashboard?tab=tasks',
+      'route': '/student/course/$courseId?tab=quizzes&quizId=${quizRef.id}',
+      'quizId': quizRef.id,
       'sourceId': quizRef.id,
       'sourceCollection': 'quizzes',
       'createdBy': facultyId,
@@ -841,6 +874,7 @@ class FacultyModuleService {
         'marks': marksValue,
         'grade': grade,
         'gradePoint': gradePointForGrade(grade),
+        'status': 'published',
         'uploadedBy': facultyId,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -961,10 +995,39 @@ class FacultyModuleService {
       await launchUrl(Uri.parse(url));
       return fileName;
     } else {
-      final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      final dir = await _resolveAttendanceDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final file = File('${dir.path}/$fileName');
       await file.writeAsBytes(bytes);
+      if (!await file.exists() || await file.length() == 0) {
+        throw Exception('Failed to write the Excel file.');
+      }
       return file.path;
     }
+  }
+
+  Future<Directory> _resolveAttendanceDirectory() async {
+    if (!Platform.isAndroid) {
+      return getApplicationDocumentsDirectory();
+    }
+
+    final permission = await Permission.storage.request();
+    if (permission.isPermanentlyDenied) {
+      await openAppSettings();
+    }
+
+    final downloadDirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
+    if (downloadDirs != null && downloadDirs.isNotEmpty) {
+      return downloadDirs.first;
+    }
+
+    final external = await getExternalStorageDirectory();
+    if (external != null) {
+      return external;
+    }
+
+    return getApplicationDocumentsDirectory();
   }
 }

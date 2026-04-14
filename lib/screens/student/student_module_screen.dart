@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -56,6 +57,7 @@ class StudentDashboardScreen extends StatefulWidget {
 class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   final StudentDashboardService _service = StudentDashboardService.instance;
   Stream<StudentDashboardData>? _stream;
+  String? _boundFirebaseUid;
   _StudentTab _tab = _StudentTab.profile;
 
   @override
@@ -71,10 +73,11 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   }
 
   void _ensureLoaded() {
-    if (_stream != null) return;
     final auth = context.read<AuthProvider>();
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (auth.currentUser == null || firebaseUser == null) return;
+    if (_stream != null && _boundFirebaseUid == firebaseUser.uid) return;
+    _boundFirebaseUid = firebaseUser.uid;
     _stream = _service.watchDashboard(
       firebaseUid: firebaseUser.uid,
       user: auth.currentUser!,
@@ -88,6 +91,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     if (auth.currentUser == null || firebaseUser == null) return;
 
     setState(() {
+      _boundFirebaseUid = firebaseUser.uid;
       _stream = _service.watchDashboard(
         firebaseUid: firebaseUser.uid,
         user: auth.currentUser!,
@@ -1611,18 +1615,44 @@ class QuizAttemptScreen extends StatefulWidget {
   State<QuizAttemptScreen> createState() => QuizAttemptScreenState();
 }
 
-class QuizAttemptScreenState extends State<QuizAttemptScreen> {
+class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindingObserver {
   final StudentDashboardService _service = StudentDashboardService.instance;
   final Map<String, String> _answers = {};
+  late final Future<List<QuizQuestionModel>> _questionsFuture;
   bool _submitting = false;
+  bool _locked = false;
 
-  Future<void> _submitQuiz(List<QuizQuestionModel> questions) async {
+  @override
+  void initState() {
+    super.initState();
+    _questionsFuture = _service.fetchQuizQuestions(widget.quiz.quiz.id);
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_locked || _submitting) return;
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _submitQuiz(autoSubmitted: true);
+    }
+  }
+
+  Future<void> _submitQuiz({bool autoSubmitted = false}) async {
+    if (_locked || _submitting) return;
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
     if (user == null) return;
+    late final List<QuizQuestionModel> questions;
 
     setState(() => _submitting = true);
     try {
+      questions = await _questionsFuture;
       await _service.submitQuizAttempt(
         quizId: widget.quiz.quiz.id,
         studentId: user.id,
@@ -1637,10 +1667,19 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _submitting = false);
+    setState(() {
+      _submitting = false;
+      _locked = true;
+    });
     final correctCount = questions.where((q) => _answers[q.id]?.trim().toLowerCase() == q.correctAnswer.trim().toLowerCase()).length;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Quiz submitted. Score saved. Correct answers: $correctCount/${questions.length}')),
+      SnackBar(
+        content: Text(
+          autoSubmitted
+              ? 'Quiz auto-submitted due to app exit. Correct answers: $correctCount/${questions.length}'
+              : 'Quiz submitted. Score saved. Correct answers: $correctCount/${questions.length}',
+        ),
+      ),
     );
     Navigator.pop(context);
   }
@@ -1652,7 +1691,7 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> {
         title: Text(widget.quiz.quiz.title),
       ),
       body: FutureBuilder<List<QuizQuestionModel>>(
-        future: _service.fetchQuizQuestions(widget.quiz.quiz.id),
+        future: _questionsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -1682,6 +1721,33 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF4E5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFF4B860)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFB85C00)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Warning: if you switch tabs, minimize the app, or lock the screen, this quiz will be auto-submitted.',
+                        style: const TextStyle(
+                          color: Color(0xFF8A4B00),
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               ...questions.asMap().entries.map(
                 (entry) {
                   final question = entry.value;
@@ -1701,7 +1767,7 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> {
                             (option) => RadioListTile<String>(
                               value: option,
                               groupValue: _answers[question.id],
-                              onChanged: (value) => setState(() => _answers[question.id] = value ?? ''),
+                              onChanged: _locked ? null : (value) => setState(() => _answers[question.id] = value ?? ''),
                               title: Text(option),
                             ),
                           ),
@@ -1713,9 +1779,9 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> {
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: _submitting ? null : () => _submitQuiz(questions),
+                onPressed: (_submitting || _locked) ? null : () => _submitQuiz(),
                 icon: const Icon(Icons.check_circle_outline),
-                label: Text(_submitting ? 'Submitting...' : 'Submit Quiz'),
+                label: Text(_locked ? 'Submitted' : (_submitting ? 'Submitting...' : 'Submit Quiz')),
               ),
             ],
           );
@@ -1736,23 +1802,14 @@ class _AnnouncementCard extends StatefulWidget {
 class _AnnouncementCardState extends State<_AnnouncementCard> {
   bool _expanded = false;
 
-  String _routeForNotification() {
-    final explicit = widget.notification.notification.route?.trim();
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    switch (widget.notification.notification.type.toLowerCase()) {
-      case 'assignment': return '/student/dashboard?tab=tasks';
-      case 'material': return '/student/dashboard?tab=courses';
-      case 'registration':
-      case 'announcement':
-      case 'general': return '/student/dashboard?tab=notifications';
-      case 'attendance': return '/student/dashboard?tab=attendance';
-      default: return '/student/dashboard?tab=notifications';
-    }
+  Future<String> _routeForNotification() async {
+    return _resolveLegacyNoticeRoute(widget.notification);
   }
 
   String get _actionText {
     switch (widget.notification.notification.type.toLowerCase()) {
       case 'assignment': return 'View Assignment';
+      case 'quiz': return 'View Quiz';
       case 'attendance': return 'View Attendance';
       case 'material': return 'View Material';
       default: return 'View Details';
@@ -1850,9 +1907,9 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
                                      backgroundColor: AppColors.primary.withOpacity(0.1),
                                      foregroundColor: AppColors.primaryDark,
                                    ),
-                                   onPressed: () {
-                                      final route = _routeForNotification();
-                                      if (route.isNotEmpty) context.go(route);
+                                   onPressed: () async {
+                                      final route = await _routeForNotification();
+                                      if (route.isNotEmpty && context.mounted) context.push(route);
                                    },
                                    child: Text(_actionText, style: const TextStyle(fontWeight: FontWeight.w700)),
                                  ),
@@ -1879,6 +1936,91 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
         ),
       ),
     );
+  }
+}
+
+bool _isLegacyGenericDashboardRoute(String route) {
+  final normalized = route.trim().toLowerCase();
+  return normalized == '/student/dashboard?tab=tasks' ||
+      normalized == '/student/dashboard?tab=courses';
+}
+
+Future<String?> _recoverCourseIdFromDocument(String collection, String? sourceId) async {
+  final id = sourceId?.trim();
+  if (id == null || id.isEmpty) return null;
+  final snapshot = await FirebaseFirestore.instance.collection(collection).doc(id).get();
+  final data = snapshot.data();
+  if (data == null) return null;
+  final courseId = (data['courseId'] ?? data['course_id'])?.toString().trim();
+  if (courseId == null || courseId.isEmpty) return null;
+  return courseId;
+}
+
+Future<String> _resolveLegacyNoticeRoute(DashboardNotificationItem notificationItem) async {
+  final note = notificationItem.notification;
+  final explicit = note.route?.trim();
+  final courseId = note.courseId?.trim();
+  final sourceId = note.sourceId?.trim();
+  final assignmentId = note.assignmentId?.trim();
+  final quizId = note.quizId?.trim();
+  final sourceCollection = note.sourceCollection?.trim().toLowerCase();
+  final type = note.type.trim().toLowerCase();
+
+  final resolvedAssignmentId = (assignmentId != null && assignmentId.isNotEmpty) ? assignmentId : sourceId;
+  final resolvedQuizId = (quizId != null && quizId.isNotEmpty) ? quizId : sourceId;
+
+  if (explicit != null && explicit.isNotEmpty && !_isLegacyGenericDashboardRoute(explicit)) {
+    return explicit;
+  }
+
+  if (courseId != null && courseId.isNotEmpty) {
+    if ((sourceCollection == 'assignments' || type == 'assignment') &&
+        resolvedAssignmentId != null &&
+        resolvedAssignmentId.isNotEmpty) {
+      return '/student/course/$courseId?tab=assignments&assignmentId=$resolvedAssignmentId';
+    }
+    if ((sourceCollection == 'quizzes' || type == 'quiz') &&
+        resolvedQuizId != null &&
+        resolvedQuizId.isNotEmpty) {
+      return '/student/course/$courseId?tab=quizzes&quizId=$resolvedQuizId';
+    }
+    if (sourceCollection == 'materials' || type == 'material') {
+      return '/student/course/$courseId?tab=materials&materialId=${sourceId ?? ''}';
+    }
+  }
+
+  if (sourceCollection == 'assignments' || type == 'assignment') {
+    final recoveredCourseId = await _recoverCourseIdFromDocument('assignments', resolvedAssignmentId);
+    if (recoveredCourseId != null) {
+      return '/student/course/$recoveredCourseId?tab=assignments&assignmentId=${resolvedAssignmentId ?? ''}';
+    }
+  }
+
+  if (sourceCollection == 'quizzes' || type == 'quiz') {
+    final recoveredCourseId = await _recoverCourseIdFromDocument('quizzes', resolvedQuizId);
+    if (recoveredCourseId != null) {
+      return '/student/course/$recoveredCourseId?tab=quizzes&quizId=${resolvedQuizId ?? ''}';
+    }
+  }
+
+  if (sourceCollection == 'materials' || type == 'material') {
+    final recoveredCourseId = await _recoverCourseIdFromDocument('materials', sourceId);
+    if (recoveredCourseId != null) {
+      return '/student/course/$recoveredCourseId?tab=materials&materialId=${sourceId ?? ''}';
+    }
+  }
+
+  switch (type) {
+    case 'assignment':
+      return '/student/dashboard?tab=notifications';
+    case 'quiz':
+      return '/student/dashboard?tab=notifications';
+    case 'material':
+      return '/student/dashboard?tab=notifications';
+    case 'attendance':
+      return '/student/dashboard?tab=attendance';
+    default:
+      return '/student/dashboard?tab=notifications';
   }
 }
 
@@ -2391,14 +2533,6 @@ class _NotificationsTabState extends State<_NotificationsTab> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('Notices', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
-                  TextButton.icon(
-                    onPressed: () {
-                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked all as read')));
-                    },
-                    icon: const Icon(Icons.done_all, size: 18),
-                    label: const Text('Mark read'),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                  ),
                 ],
               ),
             ),
@@ -2987,20 +3121,8 @@ class _NotificationCard extends StatelessWidget {
 
   const _NotificationCard({required this.notification});
 
-  String? _routeForNotification() {
-    final explicit = notification.notification.route?.trim();
-    if (explicit != null && explicit.isNotEmpty) {
-      return explicit;
-    }
-
-    switch (notification.notification.type.toLowerCase()) {
-      case 'assignment':
-        return '/student/dashboard?tab=tasks';
-      case 'attendance':
-        return '/student/dashboard?tab=attendance';
-      default:
-        return '/student/dashboard?tab=notifications';
-    }
+  Future<String> _routeForNotification() async {
+    return _resolveLegacyNoticeRoute(notification);
   }
 
   @override
@@ -3008,10 +3130,10 @@ class _NotificationCard extends StatelessWidget {
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        onTap: () {
-          final route = _routeForNotification();
-          if (route != null && route.isNotEmpty) {
-            context.go(route);
+        onTap: () async {
+          final route = await _routeForNotification();
+          if (route.isNotEmpty && context.mounted) {
+            context.push(route);
           }
         },
         leading: CircleAvatar(

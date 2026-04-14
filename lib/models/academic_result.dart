@@ -12,6 +12,7 @@ class AcademicResultItem {
   final String grade;
   final int gradePoint;
   final String? uploadedBy;
+  final String? status;
   final Timestamp? updatedAt;
 
   const AcademicResultItem({
@@ -26,6 +27,7 @@ class AcademicResultItem {
     required this.grade,
     required this.gradePoint,
     this.uploadedBy,
+    this.status,
     this.updatedAt,
   });
 
@@ -44,6 +46,7 @@ class AcademicResultItem {
       grade: grade,
       gradePoint: gradePointForGrade(grade),
       uploadedBy: _string(map['uploadedBy'] ?? map['uploaded_by']),
+      status: _string(map['status']),
       updatedAt: _timestamp(map['updatedAt'] ?? map['uploaded_at']),
     );
   }
@@ -62,6 +65,7 @@ class AcademicResultItem {
       'grade': grade,
       'gradePoint': gradePoint,
       if (uploadedBy != null) 'uploadedBy': uploadedBy,
+      if (status != null) 'status': status,
       if (updatedAt != null) 'updatedAt': updatedAt,
     };
   }
@@ -161,10 +165,13 @@ StudentAcademicRecord buildAcademicRecord({
       return a.courseCode.compareTo(b.courseCode);
     });
 
-  final currentSemesterResults = sorted.where((item) => item.semester == currentSemester).toList();
+  final currentSemesterResults = sorted
+      .where((item) => item.semester == currentSemester && item.status == 'published')
+      .toList();
+  final historicalResults = sorted.where((item) => item.semester < currentSemester).toList();
 
   final grouped = <int, List<AcademicResultItem>>{};
-  for (final item in sorted) {
+  for (final item in historicalResults) {
     grouped.putIfAbsent(item.semester, () => []).add(item);
   }
 
@@ -179,8 +186,8 @@ StudentAcademicRecord buildAcademicRecord({
       .toList()
     ..sort((a, b) => a.semester.compareTo(b.semester));
 
-  final completedCredits = sorted.fold<int>(0, (total, item) => total + item.credits);
-  final cgpa = calculateCgpa(sorted);
+  final completedCredits = historicalResults.fold<int>(0, (total, item) => total + item.credits);
+  final cgpa = calculateCgpa(historicalResults);
 
   return StudentAcademicRecord(
     currentSemesterResults: currentSemesterResults,

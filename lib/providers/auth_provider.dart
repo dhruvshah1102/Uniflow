@@ -36,10 +36,25 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _fetchUserData(String uid) async {
     try {
+      currentUser = null;
+      studentProfile = null;
+      facultyProfile = null;
+      adminProfile = null;
+
       final userModel = await _authService.getUserData(uid);
       if (userModel != null) {
         currentUser = userModel;
-        final profileData = await _authService.getRoleProfile(userModel.role, userModel.id);
+        final profileUserId = userModel.uidFirebase.trim().isNotEmpty ? userModel.uidFirebase.trim() : userModel.id;
+        var profileData = await _authService.getRoleProfile(userModel.role, profileUserId);
+
+        if (profileData == null && userModel.role.trim().toLowerCase() == 'student') {
+          await _authService.ensureUserRecord(
+            uid: profileUserId,
+            email: userModel.email,
+            role: userModel.role,
+          );
+          profileData = await _authService.getRoleProfile(userModel.role, profileUserId);
+        }
         
         if (profileData != null) {
           final profileId = profileData['id'] as String;
@@ -92,6 +107,13 @@ class AuthProvider extends ChangeNotifier {
       }
 
       await _fetchUserData(uid);
+      final normalizedEmail = email.trim().toLowerCase();
+
+      if (email.trim().toLowerCase() == 'user@iiitn.ac.in') {
+        await _authService.purgeMistakenStudentAccount(uid: uid, email: email);
+        await _authService.logout();
+        throw Exception('The test account user@iiitn.ac.in has been removed. Please use student1@iiitn.ac.in.');
+      }
 
       if (roleHint != null &&
           (currentUser == null || currentUser!.role.trim().isEmpty)) {
@@ -106,17 +128,11 @@ class AuthProvider extends ChangeNotifier {
       final normalizedRole = (currentUser?.role ?? roleHint ?? '').trim().toLowerCase();
       if (normalizedRole == 'student' || normalizedRole == 'faculty') {
         await _authService.cleanupLegacyDemoData(uid: uid, role: normalizedRole);
-        if (normalizedRole == 'student') {
-          await _authService.ensureStudentDemoData(
-            uid: uid,
-            email: email,
-          );
-        } else if (normalizedRole == 'faculty') {
-          await _authService.ensureFacultyDemoData(
-            uid: uid,
-            email: email,
-          );
-        }
+        await _fetchUserData(uid);
+      }
+
+      if (normalizedEmail == 'student1@iiitn.ac.in') {
+        await _authService.ensureDemoStudentSemesterFive(uid: uid, email: email);
         await _fetchUserData(uid);
       }
 

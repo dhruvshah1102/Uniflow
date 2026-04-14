@@ -10,12 +10,31 @@ import 'student_module_screen.dart'; // Gives access to QuizAttemptScreen
 class CourseDetailScreen extends StatelessWidget {
   final CourseDashboardItem course;
   final StudentDashboardData data;
+  final String initialTab;
+  final String? highlightAssignmentId;
+  final String? highlightQuizId;
 
   const CourseDetailScreen({
     super.key,
     required this.course,
     required this.data,
+    this.initialTab = 'overview',
+    this.highlightAssignmentId,
+    this.highlightQuizId,
   });
+
+  int get _initialTabIndex {
+    switch (initialTab.toLowerCase()) {
+      case 'materials':
+        return 1;
+      case 'assignments':
+        return 2;
+      case 'quizzes':
+        return 3;
+      default:
+        return 0;
+    }
+  }
 
   Future<void> _openMaterial(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
@@ -25,7 +44,9 @@ class CourseDetailScreen extends StatelessWidget {
     }
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!context.mounted) return;
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open material.')));
     }
   }
@@ -79,7 +100,7 @@ class CourseDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Container(
-              decoration: BoxDecoration(color: AppColors.success.withOpacity(0.15), borderRadius: BorderRadius.circular(12)), 
+              decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), 
               padding: const EdgeInsets.all(16), 
               child: const Row(
                 children: [
@@ -106,6 +127,7 @@ class CourseDetailScreen extends StatelessWidget {
 
     return DefaultTabController(
       length: 4,
+      initialIndex: _initialTabIndex,
       child: Scaffold(
         backgroundColor: AppColors.surfaceWarm,
         body: NestedScrollView(
@@ -141,7 +163,7 @@ class CourseDetailScreen extends StatelessWidget {
                       Positioned(
                         right: -30,
                         top: -10,
-                        child: Icon(Icons.school_rounded, size: 160, color: Colors.white.withOpacity(0.08)),
+                        child: Icon(Icons.school_rounded, size: 160, color: Colors.white.withValues(alpha: 0.08)),
                       ),
                       Positioned(
                         left: 16,
@@ -149,7 +171,7 @@ class CourseDetailScreen extends StatelessWidget {
                         child: Container(
                           width: 32,
                           height: 32,
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
                           child: const Icon(Icons.library_books, color: Colors.white, size: 16),
                         ),
                       ),
@@ -158,7 +180,7 @@ class CourseDetailScreen extends StatelessWidget {
                         bottom: 96,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(999)),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
                           child: Text(
                             course.course.code,
                             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0),
@@ -214,7 +236,7 @@ class CourseDetailScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary], begin: Alignment.topLeft, end: Alignment.bottomRight),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))],
+                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -228,7 +250,7 @@ class CourseDetailScreen extends StatelessWidget {
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                             child: Column(
                               children: [
                                 Text('${course.presentClasses} / ${course.totalClasses}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
@@ -262,7 +284,7 @@ class CourseDetailScreen extends StatelessWidget {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 leading: Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: AppColors.primaryDark.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: AppColors.primaryDark.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
                                   child: const Icon(Icons.picture_as_pdf, color: AppColors.primaryDark),
                                 ),
                                 title: Text(m.material.fileName, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900, fontSize: 15)),
@@ -286,11 +308,15 @@ class CourseDetailScreen extends StatelessWidget {
                         itemBuilder: (context, i) {
                           final t = assignments[i];
                           final due = DateFormat('dd MMM, hh:mm a').format(t.dueDate);
+                          final isHighlighted = highlightAssignmentId != null && t.assignment.assignmentId == highlightAssignmentId;
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             elevation: 0,
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+                            color: isHighlighted ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: isHighlighted ? AppColors.primaryDark : AppColors.border, width: isHighlighted ? 1.4 : 1),
+                            ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
                               onTap: () {
@@ -305,7 +331,7 @@ class CourseDetailScreen extends StatelessWidget {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 leading: Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
                                   child: const Icon(Icons.assignment, color: AppColors.warning),
                                 ),
                                 title: Text(t.assignment.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900, fontSize: 15)),
@@ -329,11 +355,15 @@ class CourseDetailScreen extends StatelessWidget {
                         itemBuilder: (context, i) {
                           final q = quizzes[i];
                           final due = DateFormat('dd MMM, hh:mm a').format(q.endTime);
+                          final isHighlighted = highlightQuizId != null && q.quiz.id == highlightQuizId;
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             elevation: 0,
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+                            color: isHighlighted ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: isHighlighted ? AppColors.primaryDark : AppColors.border, width: isHighlighted ? 1.4 : 1),
+                            ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
                               onTap: () => _handleQuizTap(context, q),
@@ -341,7 +371,7 @@ class CourseDetailScreen extends StatelessWidget {
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 leading: Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: AppColors.success.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                                  decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
                                   child: const Icon(Icons.quiz, color: AppColors.success),
                                 ),
                                 title: Text(q.quiz.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900, fontSize: 15)),

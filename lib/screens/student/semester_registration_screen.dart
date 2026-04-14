@@ -1,8 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../models/semester_registration.dart';
+import '../../models/student_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/semester_registration_service.dart';
 
@@ -16,6 +19,7 @@ class SemesterRegistrationScreen extends StatefulWidget {
 class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen> {
   final SemesterRegistrationService _service = SemesterRegistrationService.instance;
   Future<SemesterRegistrationContext>? _future;
+  String? _boundFirebaseUid;
   final Set<String> _selectedCourseIds = <String>{};
   final Set<String> _backlogCourseIds = <String>{};
   bool _submitting = false;
@@ -27,18 +31,31 @@ class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen>
   }
 
   void _ensureLoaded() {
-    if (_future != null) return;
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
     final student = auth.studentProfile;
     if (user == null || student == null) return;
+    if (_future != null && _boundFirebaseUid == user.uidFirebase) return;
 
-    _future = _service.loadStudentContext(
+    _boundFirebaseUid = user.uidFirebase;
+    _future = _loadContext(auth: auth, user: user, student: student);
+  }
+
+  Future<SemesterRegistrationContext> _loadContext({
+    required AuthProvider auth,
+    required UserModel user,
+    required StudentModel student,
+  }) async {
+    final latestSemester = await _resolveLatestSemester(
+      userId: user.id,
+      fallback: student.semester,
+    );
+    return _service.loadStudentContext(
       studentId: student.userId,
       studentName: user.name,
       studentEmail: user.email,
       studentDepartment: student.department,
-      currentSemester: student.semester,
+      currentSemester: latestSemester,
       creditLimit: 24,
     );
   }
@@ -50,16 +67,31 @@ class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen>
     if (user == null || student == null) return;
 
     setState(() {
-      _future = _service.loadStudentContext(
-        studentId: student.userId,
-        studentName: user.name,
-        studentEmail: user.email,
-        studentDepartment: student.department,
-        currentSemester: student.semester,
-        creditLimit: 24,
-      );
+      _boundFirebaseUid = user.uidFirebase;
+      _future = _loadContext(auth: auth, user: user, student: student);
     });
     await _future;
+  }
+
+  Future<int> _resolveLatestSemester({
+    required String userId,
+    required int fallback,
+  }) async {
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    final userSemester = _semesterFromData(userDoc.data());
+    if (userSemester != null && userSemester > 0) return userSemester;
+    final studentDoc = await FirebaseFirestore.instance.collection('students').doc(userId).get();
+    final studentSemester = _semesterFromData(studentDoc.data());
+    if (studentSemester != null && studentSemester > 0) return studentSemester;
+    return fallback;
+  }
+
+  int? _semesterFromData(Map<String, dynamic>? data) {
+    if (data == null) return null;
+    final raw = data['semester'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    return int.tryParse(raw?.toString() ?? '');
   }
 
   Future<void> _submit(SemesterRegistrationContext contextData) async {
@@ -72,6 +104,7 @@ class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen>
         studentName: contextData.studentName,
         studentEmail: contextData.studentEmail,
         currentSemester: contextData.currentSemester,
+        targetSemester: contextData.targetSemester,
         creditLimit: contextData.creditLimit,
         selectedCourseIds: _selectedCourseIds.toList(),
         backlogCourseIds: _backlogCourseIds.toList(),
@@ -109,7 +142,7 @@ class _SemesterRegistrationScreenState extends State<SemesterRegistrationScreen>
         .where((id) => backlogCourses.any((course) => course.id == id))
         .map((id) => backlogCourses.firstWhere((course) => course.id == id))
         .toList();
-    return [...regular, ...backlog].fold<int>(0, (sum, course) => sum + course.credits);
+    return [...regular, ...backlog].fold<int>(0, (total, course) => total + course.credits);
   }
 
   @override

@@ -6,6 +6,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/student/student_module_screen.dart';
 import '../screens/faculty/faculty_dashboard_screen.dart';
 import '../screens/admin/admin_curator_screen.dart';
+import '../screens/student/student_course_route_screen.dart';
 import '../core/constants/app_colors.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -58,6 +59,15 @@ class AppRouter {
           path: '/student/dashboard',
           builder: (context, state) => StudentDashboardScreen(
             initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+        GoRoute(
+          path: '/student/course/:courseId',
+          builder: (context, state) => StudentCourseRouteScreen(
+            courseId: state.pathParameters['courseId'] ?? '',
+            initialTab: state.uri.queryParameters['tab'] ?? 'overview',
+            assignmentId: state.uri.queryParameters['assignmentId'],
+            quizId: state.uri.queryParameters['quizId'],
           ),
         ),
         GoRoute(
