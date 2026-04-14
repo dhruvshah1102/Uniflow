@@ -133,6 +133,12 @@ class SeedData {
     }
     await writer.commit();
 
+    final sem5CseStudentIds = <String>[
+      studentUid,
+      for (var i = 0; i < departments.length; i++)
+        if (departments[i] == 'CSE') 's${(i + 2).toString().padLeft(3, '0')}',
+    ];
+
     final courses = <Map<String, dynamic>>[
       {
         'courseId': 'cse301',
@@ -502,9 +508,9 @@ class SeedData {
     await writer.commit();
 
     final enrollmentMap = <String, List<String>>{
-      'cse301': allStudentIds.take(16).toList(),
-      'cse302': [allStudentIds.first, ...allStudentIds.skip(6).take(15)],
-      'cse303': [allStudentIds.first, ...allStudentIds.skip(10).take(15)],
+      'cse301': sem5CseStudentIds,
+      'cse302': sem5CseStudentIds,
+      'cse303': sem5CseStudentIds,
       'ece305': [allStudentIds.first, ...allStudentIds.skip(9).take(14)],
       'aiml306': [allStudentIds.first, ...allStudentIds.skip(18).take(12), ...allStudentIds.skip(7).take(2)],
       'aiml307': [allStudentIds.first, ...allStudentIds.skip(19).take(12), ...allStudentIds.skip(11).take(2)],

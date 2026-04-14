@@ -546,6 +546,13 @@ class FacultyModuleService {
   }
 
   Future<List<CourseStudent>> fetchStudentsForCourse(String courseId) async {
+    final courseDoc = await _db.collection('courses').doc(courseId).get();
+    final courseData = courseDoc.data() ?? <String, dynamic>{};
+    final courseSemester = (courseData['semester'] as num?)?.toInt() ??
+        int.tryParse(courseData['semester']?.toString() ?? '') ??
+        0;
+    final courseDepartment = (courseData['department'] ?? '').toString().trim().toUpperCase();
+
     final enrollmentSnap = await _db
         .collection('enrollments')
         .where('courseId', isEqualTo: courseId)
@@ -562,8 +569,33 @@ class FacultyModuleService {
     final students = <CourseStudent>[];
     for (final studentId in studentIds) {
       final doc = await _db.collection('users').doc(studentId).get();
+      Map<String, dynamic>? data;
       if (doc.exists && doc.data() != null) {
-        final data = doc.data()!;
+        data = doc.data()!;
+      } else {
+        final query = await _db
+            .collection('users')
+            .where('uid_firebase', isEqualTo: studentId)
+            .limit(1)
+            .get();
+        if (query.docs.isNotEmpty) {
+          data = query.docs.first.data();
+        }
+      }
+
+      if (data != null) {
+        final studentSemester = (data['semester'] as num?)?.toInt() ??
+            int.tryParse(data['semester']?.toString() ?? '') ??
+            0;
+        final studentDepartment = (data['department'] ?? '').toString().trim().toUpperCase();
+
+        if ((courseSemester > 0 && studentSemester > 0 && studentSemester != courseSemester) ||
+            (courseDepartment.isNotEmpty &&
+                studentDepartment.isNotEmpty &&
+                studentDepartment != courseDepartment)) {
+          continue;
+        }
+
         students.add(
           CourseStudent(
             studentId: studentId,
@@ -576,27 +608,9 @@ class FacultyModuleService {
         continue;
       }
 
-      final query = await _db
-          .collection('users')
-          .where('uid_firebase', isEqualTo: studentId)
-          .limit(1)
-          .get();
-      if (query.docs.isNotEmpty) {
-        final data = query.docs.first.data();
-        students.add(
-          CourseStudent(
-            studentId: studentId,
-            name: (data['name'] as String?)?.trim().isNotEmpty == true
-                ? data['name'] as String
-                : 'Student',
-            email: (data['email'] as String?) ?? '',
-          ),
-        );
-      } else {
-        students.add(
-          CourseStudent(studentId: studentId, name: 'Student', email: ''),
-        );
-      }
+      students.add(
+        CourseStudent(studentId: studentId, name: 'Student', email: ''),
+      );
     }
 
     students.sort((a, b) => a.name.compareTo(b.name));

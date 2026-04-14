@@ -670,6 +670,7 @@ class AuthService {
         'facultyId': uid,
         'facultyName': name,
         'semester': 5,
+        'department': 'CSE',
       },
       {
         'courseId': 'cse302',
@@ -680,6 +681,7 @@ class AuthService {
         'facultyId': uid,
         'facultyName': name,
         'semester': 5,
+        'department': 'CSE',
       },
       {
         'courseId': 'cse303',
@@ -690,6 +692,7 @@ class AuthService {
         'facultyId': uid,
         'facultyName': name,
         'semester': 5,
+        'department': 'CSE',
       },
       {
         'courseId': 'ece305',
@@ -700,6 +703,7 @@ class AuthService {
         'facultyId': 'f002',
         'facultyName': 'Dr. Amit Kulkarni',
         'semester': 5,
+        'department': 'ECE',
       },
       {
         'courseId': 'aiml306',
@@ -710,6 +714,7 @@ class AuthService {
         'facultyId': 'f003',
         'facultyName': 'Dr. Neha Verma',
         'semester': 5,
+        'department': 'AI-DS',
       },
       {
         'courseId': 'aiml307',
@@ -720,6 +725,7 @@ class AuthService {
         'facultyId': 'f003',
         'facultyName': 'Dr. Neha Verma',
         'semester': 5,
+        'department': 'AI-DS',
       },
     ];
 
@@ -739,6 +745,12 @@ class AuthService {
         .where('role', isEqualTo: 'student')
         .get();
     final studentIds = studentQuery.docs
+        .where((doc) {
+          final data = doc.data();
+          final department = (data['department'] ?? '').toString().trim().toUpperCase();
+          final semester = (data['semester'] as num?)?.toInt() ?? int.tryParse(data['semester']?.toString() ?? '') ?? 0;
+          return department == 'CSE' && semester == 5;
+        })
         .map((doc) => doc.id)
         .where((id) => id.trim().isNotEmpty)
         .toList();
