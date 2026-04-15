@@ -87,14 +87,21 @@ class StudentDashboardService {
       candidateIds: candidateIds,
       semester: currentSemesterFilter,
     );
+    final approvedUpcomingCourseIds = upcomingEnrollments
+        .where((doc) => _status(doc) == 'approved')
+        .map((doc) => _string(doc['courseId']) ?? '')
+        .where((id) => id.trim().isNotEmpty)
+        .toList();
 
     final currentCourseIds = {
-      ...currentEnrollments.map((doc) => doc['courseId'] as String),
+      ...currentEnrollments.map((doc) => _string(doc['courseId']) ?? ''),
       ...approvedCurrentSemesterCourseIds,
+      ...approvedUpcomingCourseIds,
     }.where((id) => id.trim().isNotEmpty).toList();
 
     final upcomingCourseIds = visibleUpcomingEnrollments
-        .map((doc) => doc['courseId'] as String)
+        .where((doc) => _status(doc) != 'approved')
+        .map((doc) => _string(doc['courseId']) ?? '')
         .toSet()
         .toList();
     final allCourseIds = {...currentCourseIds, ...upcomingCourseIds}.toList();
@@ -348,8 +355,8 @@ class StudentDashboardService {
                     candidateIds: enrollmentCandidates,
                   );
                   final courseIds = {
-                    ...liveCurrent.map((doc) => doc['courseId'] as String? ?? ''),
-                    ...liveUpcoming.map((doc) => doc['courseId'] as String? ?? ''),
+                    ...liveCurrent.map((doc) => _string(doc['courseId']) ?? ''),
+                    ...liveUpcoming.map((doc) => _string(doc['courseId']) ?? ''),
                   }.where((id) => id.trim().isNotEmpty);
                   await resetCourseListeners(courseIds);
                   scheduleEmitSnapshot();
@@ -475,7 +482,7 @@ class StudentDashboardService {
       final doc = await _db.collection('users').doc(facultyId).get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
-        final name = data['name'] as String?;
+        final name = _string(data['name']);
         result[facultyId] = name != null && name.trim().isNotEmpty ? name : 'Faculty';
         continue;
       }
@@ -486,7 +493,7 @@ class StudentDashboardService {
           .limit(1)
           .get();
       if (query.docs.isNotEmpty) {
-        result[facultyId] = query.docs.first.data()['name'] as String? ?? 'Faculty';
+        result[facultyId] = _string(query.docs.first.data()['name']) ?? 'Faculty';
       }
     }
     return result;
@@ -880,5 +887,15 @@ class StudentDashboardService {
     final body = (data['body'] ?? data['message'] ?? '').toString().trim().toLowerCase();
     final audience = (data['audience'] ?? '').toString().trim().toLowerCase();
     return '$type|$courseId|$audience|$title|$body';
+  }
+
+  String _status(Map<String, dynamic> data) {
+    return _string(data['status'])?.toLowerCase() ?? '';
+  }
+
+  String? _string(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value.trim();
+    return value.toString().trim();
   }
 }

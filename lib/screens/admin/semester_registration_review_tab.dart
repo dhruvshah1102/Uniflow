@@ -25,6 +25,7 @@ class _SemesterRegistrationReviewTabState extends State<SemesterRegistrationRevi
   final _formDepartmentController = TextEditingController(text: 'CSE');
   late final Future<void> _catalogReady;
   bool _creatingForm = false;
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -104,22 +105,56 @@ class _SemesterRegistrationReviewTabState extends State<SemesterRegistrationRevi
     );
 
     if (reason == null) return;
-    await SemesterRegistrationService.instance.reviewRegistration(
-      registrationId: record.id,
-      adminId: widget.adminId,
-      approve: false,
-      rejectionReason: reason,
-    );
-    await widget.onChanged();
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+    try {
+      await SemesterRegistrationService.instance.reviewRegistration(
+        registrationId: record.id,
+        adminId: widget.adminId,
+        approve: false,
+        rejectionReason: reason,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration rejected successfully.')),
+      );
+      await widget.onChanged();
+    } catch (e, stack) {
+      debugPrint('Semester registration reject failed: $e');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
   }
 
   Future<void> _approve(SemesterRegistrationRecord record) async {
-    await SemesterRegistrationService.instance.reviewRegistration(
-      registrationId: record.id,
-      adminId: widget.adminId,
-      approve: true,
-    );
-    await widget.onChanged();
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+    try {
+      await SemesterRegistrationService.instance.reviewRegistration(
+        registrationId: record.id,
+        adminId: widget.adminId,
+        approve: true,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration approved successfully.')),
+      );
+      await widget.onChanged();
+    } catch (e, stack) {
+      debugPrint('Semester registration approve failed: $e');
+      debugPrintStack(stackTrace: stack);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
   }
 
   Future<void> _resetCycle(BuildContext context) async {
@@ -167,6 +202,11 @@ class _SemesterRegistrationReviewTabState extends State<SemesterRegistrationRevi
         return StreamBuilder<List<SemesterRegistrationForm>>(
           stream: SemesterRegistrationService.instance.streamRegistrationForms(activeOnly: false),
           builder: (context, formSnapshot) {
+            if (formSnapshot.hasError) {
+              return Center(
+                child: Text('Failed to load registration forms: ${formSnapshot.error}'),
+              );
+            }
             return StreamBuilder<List<SemesterRegistrationRecord>>(
               stream: SemesterRegistrationService.instance.streamPendingRegistrations(),
               builder: (context, snapshot) {
@@ -271,7 +311,7 @@ class _SemesterRegistrationReviewTabState extends State<SemesterRegistrationRevi
                                   children: [
                                     Expanded(
                                       child: OutlinedButton.icon(
-                                        onPressed: () => _reject(context, record),
+                                        onPressed: _isProcessing ? null : () => _reject(context, record),
                                         icon: const Icon(Icons.close),
                                         label: const Text('Reject'),
                                       ),
@@ -279,7 +319,7 @@ class _SemesterRegistrationReviewTabState extends State<SemesterRegistrationRevi
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: FilledButton.icon(
-                                        onPressed: () => _approve(record),
+                                        onPressed: _isProcessing ? null : () => _approve(record),
                                         icon: const Icon(Icons.check),
                                         label: const Text('Approve'),
                                       ),
@@ -386,7 +426,12 @@ class _FormCreatorPanelState extends State<_FormCreatorPanel> {
       ),
       child: StreamBuilder<List<AdminCourseItem>>(
         stream: AdminModuleService.instance.streamCourses(),
-      builder: (context, snapshot) {
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Failed to load course catalog: ${snapshot.error}'),
+            );
+          }
           final semester = _semesterValue();
           final nextSemesterCourses = semester > 0 ? semester : 1;
           final contextKey = 'sem:$nextSemesterCourses|dept:${widget.departmentController.text.trim().toLowerCase()}';

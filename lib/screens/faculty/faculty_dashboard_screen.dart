@@ -242,47 +242,15 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 pendingTasks: 0,
               );
 
-          return IndexedStack(
-            index: _tab.index,
-            children: [
-              _FacultyHomeTab(
-                data: data,
-                facultyName: user.name,
-                onOpenAttendance: () =>
-                    setState(() => _tab = _FacultyTab.attendance),
-                onOpenAssignments: () =>
-                    setState(() => _tab = _FacultyTab.assignments),
-                onOpenNotifications: () =>
-                    setState(() => _tab = _FacultyTab.notifications),
-              ),
-              _FacultyCoursesTab(data: data, service: _service),
-              _FacultyAttendanceTab(
-                data: data,
-                facultyId: firebaseUser.uid,
-                service: _service,
-              ),
-              _FacultyAssignmentsTab(
-                data: data,
-                facultyId: firebaseUser.uid,
-                service: _service,
-                onRefreshParent: _reload,
-              ),
-              _FacultyNotificationsTab(
-                data: data,
-                facultyId: firebaseUser.uid,
-                service: _service,
-                onRefreshParent: _reload,
-              ),
-              _FacultyProfileTab(
-                userName: user.name,
-                email: user.email,
-                department: facultyProfile?.department ?? '-',
-                designation: facultyProfile?.designation ?? '-',
-                employeeId: facultyProfile?.employeeId ?? '-',
-                courses: data.courses,
-                onLogout: () => auth.logout(),
-              ),
-            ],
+          return _buildSelectedTab(
+            data,
+            user.name,
+            user.email,
+            facultyProfile?.department ?? '-',
+            facultyProfile?.designation ?? '-',
+            facultyProfile?.employeeId ?? '-',
+            firebaseUser.uid,
+            () => auth.logout(),
           );
         },
       ),
@@ -337,6 +305,60 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildSelectedTab(
+    FacultyDashboardData data,
+    String userName,
+    String userEmail,
+    String department,
+    String designation,
+    String employeeId,
+    String facultyUid,
+    VoidCallback onLogout,
+  ) {
+    switch (_tab) {
+      case _FacultyTab.dashboard:
+        return _FacultyHomeTab(
+          data: data,
+          facultyName: userName,
+          onOpenAttendance: () => setState(() => _tab = _FacultyTab.attendance),
+          onOpenAssignments: () => setState(() => _tab = _FacultyTab.assignments),
+          onOpenNotifications: () => setState(() => _tab = _FacultyTab.notifications),
+        );
+      case _FacultyTab.courses:
+        return _FacultyCoursesTab(data: data, service: _service);
+      case _FacultyTab.attendance:
+        return _FacultyAttendanceTab(
+          data: data,
+          facultyId: facultyUid,
+          service: _service,
+        );
+      case _FacultyTab.assignments:
+        return _FacultyAssignmentsTab(
+          data: data,
+          facultyId: facultyUid,
+          service: _service,
+          onRefreshParent: _reload,
+        );
+      case _FacultyTab.notifications:
+        return _FacultyNotificationsTab(
+          data: data,
+          facultyId: facultyUid,
+          service: _service,
+          onRefreshParent: _reload,
+        );
+      case _FacultyTab.profile:
+        return _FacultyProfileTab(
+          userName: userName,
+          email: userEmail,
+          department: department,
+          designation: designation,
+          employeeId: employeeId,
+          courses: data.courses,
+          onLogout: onLogout,
+        );
+    }
   }
 }
 

@@ -76,22 +76,29 @@ class _AdminCuratorScreenState extends State<AdminCuratorScreen> {
           IconButton(onPressed: auth.logout, icon: const Icon(Icons.logout_outlined)),
         ],
       ),
-      body: IndexedStack(
-        index: _tab.index,
-        children: [
-          _DashboardTab(overviewStream: _overviewStream, onRefresh: _refreshAll),
-          UserManagementTab(service: _service, adminUid: user.id, onChanged: _refreshAll),
-          CreateCourseTab(service: _service, onChanged: _refreshAll),
-          SemesterRegistrationReviewTab(adminId: user.id, onChanged: _refreshAll),
-          _ReportsTab(reportsStream: _reportsStream, onRefresh: _refreshAll),
-          _ProfileTab(name: user.name, email: user.email, onLogout: auth.logout),
-        ],
-      ),
+      body: _buildSelectedTab(user, auth.logout),
       bottomNavigationBar: _BottomBar(
         currentIndex: _tab.index,
         onTap: (index) => setState(() => _tab = _Tab.values[index]),
       ),
     );
+  }
+
+  Widget _buildSelectedTab(dynamic user, VoidCallback onLogout) {
+    switch (_tab) {
+      case _Tab.dashboard:
+        return _DashboardTab(overviewStream: _overviewStream, onRefresh: _refreshAll);
+      case _Tab.users:
+        return UserManagementTab(service: _service, adminUid: user.id, onChanged: _refreshAll);
+      case _Tab.courses:
+        return CreateCourseTab(service: _service, onChanged: _refreshAll);
+      case _Tab.registrations:
+        return SemesterRegistrationReviewTab(adminId: user.id, onChanged: _refreshAll);
+      case _Tab.reports:
+        return _ReportsTab(reportsStream: _reportsStream, onRefresh: _refreshAll);
+      case _Tab.profile:
+        return _ProfileTab(name: user.name, email: user.email, onLogout: onLogout);
+    }
   }
 }
 
@@ -372,8 +379,17 @@ class _RegistrationsTab extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () async {
-                              await service.rejectRegistration(registrationId: r.id, adminId: adminId);
-                              await onChanged();
+                              try {
+                                await service.rejectRegistration(registrationId: r.id, adminId: adminId);
+                                await onChanged();
+                              } catch (e, stack) {
+                                debugPrint('rejectRegistration failed for ${r.id}: $e');
+                                debugPrint(stack.toString());
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.close),
                             label: const Text('Reject'),
@@ -383,8 +399,21 @@ class _RegistrationsTab extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton.icon(
                             onPressed: () async {
-                              await service.approveRegistration(registrationId: r.id, adminId: adminId);
-                              await onChanged();
+                              try {
+                                await service.approveRegistration(registrationId: r.id, adminId: adminId);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Registration approved successfully.')),
+                                );
+                                await onChanged();
+                              } catch (e, stack) {
+                                debugPrint('approveRegistration failed for ${r.id}: $e');
+                                debugPrint(stack.toString());
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                );
+                              }
                             },
                             icon: const Icon(Icons.check),
                             label: const Text('Approve'),

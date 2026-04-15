@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -293,9 +294,9 @@ class SemesterRegistrationService {
     required bool approve,
     String? rejectionReason,
   }) async {
-    await _db.runTransaction((txn) async {
+    try {
       final regRef = _db.collection('registrations').doc(registrationId);
-      final regSnap = await txn.get(regRef);
+      final regSnap = await regRef.get();
       if (!regSnap.exists || regSnap.data() == null) {
         throw Exception('Registration request not found.');
       }
@@ -305,16 +306,36 @@ class SemesterRegistrationService {
         throw Exception('This request has already been reviewed.');
       }
 
+      if (record.studentId.isEmpty) {
+        throw Exception('Registration request is missing a student identifier.');
+      }
+
+      if (record.targetSemester < 1 || record.targetSemester > 12) {
+        throw Exception('Registration request has an invalid target semester.');
+      }
+
       if (!approve && (rejectionReason == null || rejectionReason.trim().isEmpty)) {
         throw Exception('Please provide a rejection reason.');
       }
 
+      final courseIds = {
+        ...record.selectedCourseIds.where((id) => id.trim().isNotEmpty),
+        ...record.backlogCourseIds.where((id) => id.trim().isNotEmpty),
+      }.toList();
+      if (approve && courseIds.isEmpty) {
+        throw Exception('Cannot approve registration without any selected or backlog courses.');
+      }
+
+      final batch = _db.batch();
+
       if (approve) {
-        final courseIds = {...record.selectedCourseIds, ...record.backlogCourseIds}.toList();
+        debugPrint('reviewRegistration approving registration ${record.id} for student ${record.studentId}');
         for (final courseId in courseIds) {
-          final enrollRef = _db.collection('enrollments').doc('enr_${record.studentId}_$courseId');
-          txn.set(
-            enrollRef,
+          final safeStudentId = Uri.encodeComponent(record.studentId);
+          final safeCourseId = Uri.encodeComponent(courseId);
+          batch.delete(_db.collection('upcomingEnrollments').doc('upcoming_${safeStudentId}_$safeCourseId'));
+          batch.set(
+            _db.collection('enrollments').doc('enr_${safeStudentId}_$safeCourseId'),
             {
               'studentId': record.studentId,
               'courseId': courseId,
@@ -328,16 +349,15 @@ class SemesterRegistrationService {
           );
         }
 
-        final studentUserRef = _db.collection('users').doc(record.studentId);
-        txn.set(
-          studentUserRef,
+        batch.set(
+          _db.collection('users').doc(record.studentId),
           {
             'semester': record.targetSemester,
             'updated_at': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
-        txn.set(
+        batch.set(
           _db.collection('students').doc(record.studentId),
           {
             'semester': record.targetSemester,
@@ -347,7 +367,7 @@ class SemesterRegistrationService {
         );
       }
 
-      txn.set(
+      batch.set(
         regRef,
         {
           'status': approve ? 'approved' : 'rejected',
@@ -358,24 +378,38 @@ class SemesterRegistrationService {
         SetOptions(merge: true),
       );
 
-      txn.set(
-        _db.collection('notifications').doc(),
-        {
-          'userId': record.studentId,
-          'title': approve ? 'Registration Approved' : 'Registration Rejected',
-          'message': approve
-              ? 'Your next semester registration has been approved.'
-              : 'Your next semester registration has been rejected.',
-          'body': approve
-              ? 'Your next semester registration has been approved.'
-              : 'Your next semester registration has been rejected.',
-          'type': 'registration',
-          'read': false,
-          'createdBy': adminId,
-          'createdAt': FieldValue.serverTimestamp(),
-        },
-      );
-    });
+      await batch.commit();
+
+      try {
+        await _db.collection('notifications').add(
+          {
+            'userId': record.studentId,
+            'title': approve ? 'Registration Approved' : 'Registration Rejected',
+            'message': approve
+                ? 'Your next semester registration has been approved.'
+                : 'Your next semester registration has been rejected.',
+            'body': approve
+                ? 'Your next semester registration has been approved.'
+                : 'Your next semester registration has been rejected.',
+            'type': 'registration',
+            'read': false,
+            'createdBy': adminId,
+            'createdAt': FieldValue.serverTimestamp(),
+          },
+        );
+      } catch (notificationError, notificationStack) {
+        debugPrint('reviewRegistration notification write failed: $notificationError');
+        debugPrintStack(stackTrace: notificationStack);
+      }
+    } on FirebaseException catch (e) {
+      debugPrint('reviewRegistration FirebaseException: $e');
+      debugPrintStack(stackTrace: e.stackTrace);
+      throw Exception('Failed to review registration: ${e.message ?? e.code}');
+    } catch (e, stack) {
+      debugPrint('reviewRegistration failed: $e');
+      debugPrintStack(stackTrace: stack);
+      rethrow;
+    }
   }
 
   Future<void> resetUpcomingRegistrationCycle() async {
@@ -431,7 +465,7 @@ class SemesterRegistrationService {
   Future<List<String>> _fetchEnrollmentCourseIds(String studentId) async {
     final snap = await _db.collection('enrollments').where('studentId', isEqualTo: studentId).get();
     return snap.docs
-        .map((doc) => doc.data()['courseId'] as String?)
+        .map((doc) => _string(doc.data()['courseId']))
         .whereType<String>()
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
@@ -441,7 +475,7 @@ class SemesterRegistrationService {
   Future<List<String>> _fetchUpcomingEnrollmentCourseIds(String studentId) async {
     final snap = await _db.collection('upcomingEnrollments').where('studentId', isEqualTo: studentId).get();
     return snap.docs
-        .map((doc) => doc.data()['courseId'] as String?)
+        .map((doc) => _string(doc.data()['courseId']))
         .whereType<String>()
         .map((id) => id.trim())
         .where((id) => id.isNotEmpty)
@@ -519,6 +553,12 @@ class SemesterRegistrationService {
       }
       await batch.commit();
     }
+  }
+
+  String? _string(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value.trim();
+    return value.toString().trim();
   }
 }
 

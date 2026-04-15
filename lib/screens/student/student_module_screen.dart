@@ -231,24 +231,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
             );
           }
 
-          return IndexedStack(
-            index: _tab.index,
-            children: [
-              _CoursesTab(
-                data: data,
-                onOpenRegistration: _openRegistrationScreen,
-              ),
-              _AttendanceTab(data: data),
-              const StudentGradesScreen(),
-              _NotificationsTab(data: data),
-              _ProfileTab(
-                data: data,
-                onLogout: _logout,
-                onOpenCourses: () => _switchTab(_StudentTab.courses),
-                onOpenRegistration: _openRegistrationScreen,
-              ),
-            ],
-          );
+          return _buildSelectedTab(data);
         },
       ),
       bottomNavigationBar: Container(
@@ -282,6 +265,29 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildSelectedTab(StudentDashboardData data) {
+    switch (_tab) {
+      case _StudentTab.courses:
+        return _CoursesTab(
+          data: data,
+          onOpenRegistration: _openRegistrationScreen,
+        );
+      case _StudentTab.attendance:
+        return _AttendanceTab(data: data);
+      case _StudentTab.grades:
+        return const StudentGradesScreen();
+      case _StudentTab.notifications:
+        return _NotificationsTab(data: data);
+      case _StudentTab.profile:
+        return _ProfileTab(
+          data: data,
+          onLogout: _logout,
+          onOpenCourses: () => _switchTab(_StudentTab.courses),
+          onOpenRegistration: _openRegistrationScreen,
+        );
+    }
   }
 
   void _switchTab(_StudentTab tab) {
@@ -2267,7 +2273,7 @@ class _RegistrationStatusCard extends StatelessWidget {
             Text(
               isPending
                   ? 'The request is under review. Current semester courses remain available during approval.'
-                  : 'Approved courses are now listed in Upcoming Semester Courses.',
+                  : 'Approved courses are now listed in your active semester courses.',
               style: const TextStyle(color: AppColors.ink500, height: 1.35),
             ),
           ],

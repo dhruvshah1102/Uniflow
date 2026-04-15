@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -738,12 +739,12 @@ class AdminModuleService {
     ]);
 
     await seedCourses([
-      _catalogCourse('cse301', 'CS301', 'Data Structures & Algorithms', 4, 'CSE'),
-      _catalogCourse('cse302', 'CS302', 'Operating Systems', 4, 'CSE'),
-      _catalogCourse('cse303', 'CS303', 'Database Management Systems', 4, 'CSE'),
-      _catalogCourse('ece305', 'EC305', 'Digital Signal Processing', 4, 'ECE'),
-      _catalogCourse('aiml306', 'AI306', 'Machine Learning', 4, 'AI-DS'),
-      _catalogCourse('aiml307', 'AI307', 'Artificial Intelligence', 3, 'AI-DS'),
+      _catalogCourse('cse501', 'CS501', 'Computer Architecture', 4, 'CSE'),
+      _catalogCourse('cse502', 'CS502', 'Design and Analysis of Algorithms', 4, 'CSE'),
+      _catalogCourse('cse503', 'CS503', 'Database Systems II', 4, 'CSE'),
+      _catalogCourse('cse504', 'CS504', 'Theory of Computation', 3, 'CSE'),
+      _catalogCourse('cse505', 'CS505', 'Software Engineering', 3, 'CSE'),
+      _catalogCourse('cse506', 'CS506', 'Systems Lab', 2, 'CSE'),
     ]);
 
     await seedCourses([
@@ -1019,7 +1020,10 @@ class AdminModuleService {
   }
 
   Stream<List<AdminCourseItem>> streamCourses() {
-    unawaited(_ensureSemesterOneCatalog());
+    _ensureSemesterOneCatalog().catchError((error, stackTrace) {
+      print('Failed to ensure semester course catalog: $error');
+      print(stackTrace);
+    });
     return _db.collection('courses').snapshots().map((snap) {
       final list = snap.docs.map(AdminCourseItem.fromDoc).toList();
       list.sort((a, b) {
@@ -1276,11 +1280,17 @@ class AdminModuleService {
 
     final registrationData = regSnap.data()!;
     if (registrationData['targetSemester'] != null || registrationData['registrationType'] == 'semester_registration') {
-      return SemesterRegistrationService.instance.reviewRegistration(
-        registrationId: registrationId,
-        adminId: adminId,
-        approve: true,
-      );
+      try {
+        return await SemesterRegistrationService.instance.reviewRegistration(
+          registrationId: registrationId,
+          adminId: adminId,
+          approve: true,
+        );
+      } catch (e, stack) {
+        debugPrint('approveRegistration failed for $registrationId: $e');
+        debugPrintStack(stackTrace: stack);
+        rethrow;
+      }
     }
 
     await _db.runTransaction((txn) async {
@@ -1346,12 +1356,18 @@ class AdminModuleService {
     }
 
     if (regSnap.data()!['targetSemester'] != null || regSnap.data()!['registrationType'] == 'semester_registration') {
-      return SemesterRegistrationService.instance.reviewRegistration(
-        registrationId: registrationId,
-        adminId: adminId,
-        approve: false,
-        rejectionReason: 'Rejected by admin.',
-      );
+      try {
+        return await SemesterRegistrationService.instance.reviewRegistration(
+          registrationId: registrationId,
+          adminId: adminId,
+          approve: false,
+          rejectionReason: 'Rejected by admin.',
+        );
+      } catch (e, stack) {
+        debugPrint('rejectRegistration failed for $registrationId: $e');
+        debugPrintStack(stackTrace: stack);
+        rethrow;
+      }
     }
 
     final studentId = _string(regSnap.data()!['studentId']) ?? '';

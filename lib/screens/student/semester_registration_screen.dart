@@ -712,7 +712,7 @@ class _PendingCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             approved
-                ? 'Courses approved for Semester ${record.targetSemester} will now appear in Upcoming Semester Courses.'
+                ? 'Courses approved for Semester ${record.targetSemester} will now be added to active enrollments and your semester will advance.'
                 : 'Submitted on your behalf for Semester ${record.targetSemester}.',
             style: const TextStyle(
               color: AppColors.ink700,

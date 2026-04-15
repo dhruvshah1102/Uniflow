@@ -37,9 +37,20 @@ void main() async {
     }
   }
 
-  runApp(const UniflowApp());
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(PushNotificationService.instance.flushPendingNavigation());
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter error: ${details.exception}');
+    debugPrintStack(stackTrace: details.stack ?? StackTrace.current);
+  };
+
+  runZonedGuarded(() {
+    runApp(const UniflowApp());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(PushNotificationService.instance.flushPendingNavigation());
+    });
+  }, (error, stack) {
+    debugPrint('Uncaught zone error: $error');
+    debugPrintStack(stackTrace: stack);
   });
 }
 
