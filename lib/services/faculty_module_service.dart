@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -91,6 +92,9 @@ class QuizAttemptSummary {
 class FacultyModuleService {
   FacultyModuleService._();
   static final FacultyModuleService instance = FacultyModuleService._();
+
+  static const MethodChannel _attendanceExportChannel =
+      MethodChannel('uniflow/attendance_export');
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final StorageService _storage = StorageService.instance;
@@ -1008,18 +1012,28 @@ class FacultyModuleService {
       final url = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,$base64data';
       await launchUrl(Uri.parse(url));
       return fileName;
-    } else {
-      final dir = await _resolveAttendanceDirectory();
-      if (!await dir.exists()) {
-        await dir.create(recursive: true);
-      }
-      final file = File('${dir.path}/$fileName');
-      await file.writeAsBytes(bytes);
-      if (!await file.exists() || await file.length() == 0) {
-        throw Exception('Failed to write the Excel file.');
-      }
-      return file.path;
     }
+
+    if (Platform.isAndroid) {
+      final savedLocation = await _saveAttendanceExcelToDownloads(
+        bytes: bytes,
+        fileName: fileName,
+      );
+      if (savedLocation.isNotEmpty) {
+        return savedLocation;
+      }
+    }
+
+    final dir = await _resolveAttendanceDirectory();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    final file = File('${dir.path}/$fileName');
+    await file.writeAsBytes(bytes);
+    if (!await file.exists() || await file.length() == 0) {
+      throw Exception('Failed to write the Excel file.');
+    }
+    return file.path;
   }
 
   Future<Directory> _resolveAttendanceDirectory() async {
@@ -1043,5 +1057,26 @@ class FacultyModuleService {
     }
 
     return getApplicationDocumentsDirectory();
+  }
+
+  Future<String> _saveAttendanceExcelToDownloads({
+    required List<int> bytes,
+    required String fileName,
+  }) async {
+    try {
+      final result = await _attendanceExportChannel.invokeMethod<String>(
+        'saveAttendanceExcel',
+        <String, dynamic>{
+          'fileName': fileName,
+          'bytes': Uint8List.fromList(bytes),
+        },
+      );
+      if (result == null || result.isEmpty) {
+        throw Exception('Unable to save file to Downloads.');
+      }
+      return result;
+    } catch (e) {
+      throw Exception('Attendance export failed: ${e.toString()}');
+    }
   }
 }
