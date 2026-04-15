@@ -79,6 +79,18 @@ class SeedData {
     _upsertUser(writer, id: 'f003', name: 'Dr. Neha Verma', email: 'neha.verma@iiitn.ac.in', role: 'faculty', department: 'AI-DS');
     writer.set(_db.collection('faculty').doc('f002'), {'user_id': 'f002', 'employee_id': 'FAC-1002', 'designation': 'Assistant Professor', 'department': 'ECE'}, merge: true);
     writer.set(_db.collection('faculty').doc('f003'), {'user_id': 'f003', 'employee_id': 'FAC-1003', 'designation': 'Assistant Professor', 'department': 'AI-DS'}, merge: true);
+    _upsertUser(writer, id: 'f004', name: 'Dr. Ananya Sharma', email: 'ananya.sharma@iiitn.ac.in', role: 'faculty', department: 'CSE');
+    _upsertUser(writer, id: 'f005', name: 'Dr. Rohan Mehta', email: 'rohan.mehta@iiitn.ac.in', role: 'faculty', department: 'CSE');
+    _upsertUser(writer, id: 'f006', name: 'Dr. Meera Joshi', email: 'meera.joshi@iiitn.ac.in', role: 'faculty', department: 'CSE');
+    _upsertUser(writer, id: 'f007', name: 'Dr. Kunal Verma', email: 'kunal.verma@iiitn.ac.in', role: 'faculty', department: 'CSE');
+    _upsertUser(writer, id: 'f008', name: 'Dr. Asha Nair', email: 'asha.nair@iiitn.ac.in', role: 'faculty', department: 'ECE');
+    _upsertUser(writer, id: 'f009', name: 'Dr. Vikram Singh', email: 'vikram.singh@iiitn.ac.in', role: 'faculty', department: 'AI-DS');
+    writer.set(_db.collection('faculty').doc('f004'), {'user_id': 'f004', 'employee_id': 'FAC-1004', 'designation': 'Assistant Professor', 'department': 'CSE'}, merge: true);
+    writer.set(_db.collection('faculty').doc('f005'), {'user_id': 'f005', 'employee_id': 'FAC-1005', 'designation': 'Assistant Professor', 'department': 'CSE'}, merge: true);
+    writer.set(_db.collection('faculty').doc('f006'), {'user_id': 'f006', 'employee_id': 'FAC-1006', 'designation': 'Assistant Professor', 'department': 'CSE'}, merge: true);
+    writer.set(_db.collection('faculty').doc('f007'), {'user_id': 'f007', 'employee_id': 'FAC-1007', 'designation': 'Assistant Professor', 'department': 'CSE'}, merge: true);
+    writer.set(_db.collection('faculty').doc('f008'), {'user_id': 'f008', 'employee_id': 'FAC-1008', 'designation': 'Assistant Professor', 'department': 'ECE'}, merge: true);
+    writer.set(_db.collection('faculty').doc('f009'), {'user_id': 'f009', 'employee_id': 'FAC-1009', 'designation': 'Assistant Professor', 'department': 'AI-DS'}, merge: true);
     await writer.commit();
 
     final studentNames = <String>[
@@ -352,8 +364,8 @@ class SeedData {
         'course_name': 'Data Warehousing and Mining',
         'description': 'Warehousing concepts, OLAP, classification, clustering and association mining.',
         'credits': 3,
-        'facultyId': facultyUid,
-        'facultyName': 'Dr. Priya Sharma',
+        'facultyId': 'f004',
+        'facultyName': 'Dr. Ananya Sharma',
         'semester': 6,
         'semesterLabel': 'Semester 6',
         'department': 'CSE',
@@ -368,8 +380,8 @@ class SeedData {
         'course_name': 'Mobile Application Development',
         'description': 'Cross-platform app design, state management, API integration and deployment.',
         'credits': 3,
-        'facultyId': facultyUid,
-        'facultyName': 'Dr. Priya Sharma',
+        'facultyId': 'f005',
+        'facultyName': 'Dr. Rohan Mehta',
         'semester': 6,
         'semesterLabel': 'Semester 6',
         'department': 'CSE',
@@ -384,8 +396,8 @@ class SeedData {
         'course_name': 'Cloud Computing',
         'description': 'Virtualization, cloud service models, orchestration and distributed infrastructure.',
         'credits': 3,
-        'facultyId': facultyUid,
-        'facultyName': 'Dr. Priya Sharma',
+        'facultyId': 'f006',
+        'facultyName': 'Dr. Meera Joshi',
         'semester': 6,
         'semesterLabel': 'Semester 6',
         'department': 'CSE',

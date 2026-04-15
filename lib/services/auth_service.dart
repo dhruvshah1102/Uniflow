@@ -660,6 +660,91 @@ class AuthService {
       'classroom_teacher_id': null,
     }, SetOptions(merge: true));
 
+    final extraFaculty = [
+      {
+        'id': 'f002',
+        'name': 'Dr. Amit Kulkarni',
+        'email': 'amit.kulkarni@iiitn.ac.in',
+        'department': 'ECE',
+        'employeeId': 'FAC-1002',
+      },
+      {
+        'id': 'f003',
+        'name': 'Dr. Neha Verma',
+        'email': 'neha.verma@iiitn.ac.in',
+        'department': 'AI-DS',
+        'employeeId': 'FAC-1003',
+      },
+      {
+        'id': 'f004',
+        'name': 'Dr. Ananya Sharma',
+        'email': 'ananya.sharma@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1004',
+      },
+      {
+        'id': 'f005',
+        'name': 'Dr. Rohan Mehta',
+        'email': 'rohan.mehta@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1005',
+      },
+      {
+        'id': 'f006',
+        'name': 'Dr. Meera Joshi',
+        'email': 'meera.joshi@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1006',
+      },
+      {
+        'id': 'f007',
+        'name': 'Dr. Kunal Verma',
+        'email': 'kunal.verma@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1007',
+      },
+      {
+        'id': 'f008',
+        'name': 'Dr. Asha Nair',
+        'email': 'asha.nair@iiitn.ac.in',
+        'department': 'ECE',
+        'employeeId': 'FAC-1008',
+      },
+      {
+        'id': 'f009',
+        'name': 'Dr. Vikram Singh',
+        'email': 'vikram.singh@iiitn.ac.in',
+        'department': 'AI-DS',
+        'employeeId': 'FAC-1009',
+      },
+    ];
+    for (final faculty in extraFaculty) {
+      batch.set(
+        _firestore.collection('users').doc(faculty['id'] as String),
+        {
+          'name': faculty['name'],
+          'email': faculty['email'],
+          'role': 'faculty',
+          'uid_firebase': faculty['id'],
+          'fcm_token': '',
+          'created_at': FieldValue.serverTimestamp(),
+          'department': faculty['department'],
+        },
+        SetOptions(merge: true),
+      );
+      batch.set(
+        _firestore.collection('faculty').doc(faculty['id'] as String),
+        {
+          'user_id': faculty['id'],
+          'employee_id': faculty['employeeId'],
+          'designation': 'Assistant Professor',
+          'department': faculty['department'],
+          'classroom_teacher_id': null,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
     final courses = [
       {
         'courseId': 'cse301',

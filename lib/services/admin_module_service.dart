@@ -172,6 +172,7 @@ class AdminModuleService {
 
   Future<AdminOverview> fetchOverview() async {
     await _ensureSemesterOneCatalog();
+    await ensureFacultyRoster();
     final usersSnap = await _db.collection('users').get();
     final coursesSnap = await _db.collection('courses').get();
     final registrationsSnap = await _db.collection('registrations').get();
@@ -197,8 +198,10 @@ class AdminModuleService {
   }
 
   Future<void> ensureCourseCatalog() async {
+    await ensureFacultyRoster();
     await _removeGeneratedSemesterFiveCatalog();
     await _ensureSemesterOneCatalog();
+    await syncMissingCourseFacultyAssignments();
   }
 
   Future<List<String>> cleanupEmptySemesterFiveCourses() {
@@ -283,14 +286,17 @@ class AdminModuleService {
       query = query.where('role', isEqualTo: role);
     }
 
-    return query.snapshots().map((snap) {
-      final list = snap.docs.map(AdminUserItem.fromDoc).toList();
-      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-      return list;
+    return Stream.fromFuture(ensureFacultyRoster()).asyncExpand((_) {
+      return query.snapshots().map((snap) {
+        final list = snap.docs.map(AdminUserItem.fromDoc).toList();
+        list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        return list;
+      });
     });
   }
 
   Future<List<AdminUserItem>> fetchFacultyUsers() async {
+    await ensureFacultyRoster();
     final snap = await _db.collection('users').where('role', isEqualTo: 'faculty').get();
     final users = snap.docs.map(AdminUserItem.fromDoc).toList();
     users.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
@@ -298,14 +304,16 @@ class AdminModuleService {
   }
 
   Stream<List<AdminUserItem>> streamAllUsers() {
-    return _db.collection('users').snapshots().map((snap) {
-      final users = snap.docs.map(AdminUserItem.fromDoc).toList();
-      users.sort((a, b) {
-        final roleOrder = _roleRank(a.role).compareTo(_roleRank(b.role));
-        if (roleOrder != 0) return roleOrder;
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    return Stream.fromFuture(ensureFacultyRoster()).asyncExpand((_) {
+      return _db.collection('users').snapshots().map((snap) {
+        final users = snap.docs.map(AdminUserItem.fromDoc).toList();
+        users.sort((a, b) {
+          final roleOrder = _roleRank(a.role).compareTo(_roleRank(b.role));
+          if (roleOrder != 0) return roleOrder;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+        return users;
       });
-      return users;
     });
   }
 
@@ -1020,18 +1028,16 @@ class AdminModuleService {
   }
 
   Stream<List<AdminCourseItem>> streamCourses() {
-    _ensureSemesterOneCatalog().catchError((error, stackTrace) {
-      print('Failed to ensure semester course catalog: $error');
-      print(stackTrace);
-    });
-    return _db.collection('courses').snapshots().map((snap) {
-      final list = snap.docs.map(AdminCourseItem.fromDoc).toList();
-      list.sort((a, b) {
-        final semesterCompare = a.semesterNumber.compareTo(b.semesterNumber);
-        if (semesterCompare != 0) return semesterCompare;
-        return a.code.toLowerCase().compareTo(b.code.toLowerCase());
+    return Stream.fromFuture(ensureCourseCatalog()).asyncExpand((_) {
+      return _db.collection('courses').snapshots().map((snap) {
+        final list = snap.docs.map(AdminCourseItem.fromDoc).toList();
+        list.sort((a, b) {
+          final semesterCompare = a.semesterNumber.compareTo(b.semesterNumber);
+          if (semesterCompare != 0) return semesterCompare;
+          return a.code.toLowerCase().compareTo(b.code.toLowerCase());
+        });
+        return list;
       });
-      return list;
     });
   }
 
@@ -1238,6 +1244,184 @@ class AdminModuleService {
       },
       SetOptions(merge: true),
     );
+  }
+
+  Future<void> syncMissingCourseFacultyAssignments() async {
+    final facultyRoster = <_FacultyAssignment?>[
+      await _resolveFacultyAssignment('faculty1@iiitn.ac.in', 'Dr. Priya Sharma'),
+      await _resolveFacultyAssignment('ananya.sharma@iiitn.ac.in', 'Dr. Ananya Sharma'),
+      await _resolveFacultyAssignment('rohan.mehta@iiitn.ac.in', 'Dr. Rohan Mehta'),
+      await _resolveFacultyAssignment('meera.joshi@iiitn.ac.in', 'Dr. Meera Joshi'),
+      await _resolveFacultyAssignment('kunal.verma@iiitn.ac.in', 'Dr. Kunal Verma'),
+    ].whereType<_FacultyAssignment>().toList();
+    final priyaCourseIds = <String>{
+      'cse301',
+      'cse302',
+      'cse303',
+      'cse201',
+      'cse202',
+      'cse203',
+      'cse401',
+      'cse402',
+      'cse403',
+      'cse404',
+    };
+    final otherFacultyRoster = facultyRoster.length > 1 ? facultyRoster.sublist(1) : facultyRoster;
+
+    if (facultyRoster.isEmpty) return;
+
+    final coursesSnap = await _db.collection('courses').get();
+    final cseCourses = coursesSnap.docs.where((doc) {
+      final data = doc.data();
+      final courseId = (_string(data['courseId']) ?? doc.id).trim().toLowerCase();
+      final department = (_string(data['department']) ?? '').trim().toUpperCase();
+      final semester = _int(data['semester']) ??
+          _int(data['semesterNumber']) ??
+          _semesterFromCourseId(courseId);
+      return semester >= 1 && semester <= 8 && (department == 'CSE' || courseId.startsWith('cse'));
+    }).toList()
+      ..sort((a, b) {
+        final aSemester = _int(a.data()['semester']) ?? _semesterFromCourseId(_string(a.data()['courseId']) ?? a.id);
+        final bSemester = _int(b.data()['semester']) ?? _semesterFromCourseId(_string(b.data()['courseId']) ?? b.id);
+        final semesterCompare = aSemester.compareTo(bSemester);
+        if (semesterCompare != 0) return semesterCompare;
+
+        final aCode = (_string(a.data()['courseCode']) ?? _string(a.data()['code']) ?? a.id).toLowerCase();
+        final bCode = (_string(b.data()['courseCode']) ?? _string(b.data()['code']) ?? b.id).toLowerCase();
+        final codeCompare = aCode.compareTo(bCode);
+        if (codeCompare != 0) return codeCompare;
+        return a.id.compareTo(b.id);
+      });
+
+    if (cseCourses.isEmpty) return;
+
+    WriteBatch batch = _db.batch();
+    var ops = 0;
+    var otherIndex = 0;
+
+    Future<void> flush() async {
+      if (ops == 0) return;
+      await batch.commit();
+      batch = _db.batch();
+      ops = 0;
+    }
+
+    for (var index = 0; index < cseCourses.length; index++) {
+      final doc = cseCourses[index];
+      final courseId = (_string(doc.data()['courseId']) ?? doc.id).trim().toLowerCase();
+      final assignment = priyaCourseIds.contains(courseId)
+          ? facultyRoster.first
+          : otherFacultyRoster[otherIndex++ % otherFacultyRoster.length];
+      batch.set(
+        doc.reference,
+        {
+          'facultyId': assignment.uid,
+          'faculty_id': assignment.uid,
+          'facultyName': assignment.name,
+          'faculty_name': assignment.name,
+        },
+        SetOptions(merge: true),
+      );
+      ops += 1;
+      if (ops >= 450) {
+        await flush();
+      }
+    }
+
+    await flush();
+  }
+
+  Future<void> ensureFacultyRoster() async {
+    final faculty = <Map<String, dynamic>>[
+      {
+        'id': 'f002',
+        'name': 'Dr. Amit Kulkarni',
+        'email': 'amit.kulkarni@iiitn.ac.in',
+        'department': 'ECE',
+        'employeeId': 'FAC-1002',
+      },
+      {
+        'id': 'f003',
+        'name': 'Dr. Neha Verma',
+        'email': 'neha.verma@iiitn.ac.in',
+        'department': 'AI-DS',
+        'employeeId': 'FAC-1003',
+      },
+      {
+        'id': 'f004',
+        'name': 'Dr. Ananya Sharma',
+        'email': 'ananya.sharma@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1004',
+      },
+      {
+        'id': 'f005',
+        'name': 'Dr. Rohan Mehta',
+        'email': 'rohan.mehta@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1005',
+      },
+      {
+        'id': 'f006',
+        'name': 'Dr. Meera Joshi',
+        'email': 'meera.joshi@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1006',
+      },
+      {
+        'id': 'f007',
+        'name': 'Dr. Kunal Verma',
+        'email': 'kunal.verma@iiitn.ac.in',
+        'department': 'CSE',
+        'employeeId': 'FAC-1007',
+      },
+      {
+        'id': 'f008',
+        'name': 'Dr. Asha Nair',
+        'email': 'asha.nair@iiitn.ac.in',
+        'department': 'ECE',
+        'employeeId': 'FAC-1008',
+      },
+      {
+        'id': 'f009',
+        'name': 'Dr. Vikram Singh',
+        'email': 'vikram.singh@iiitn.ac.in',
+        'department': 'AI-DS',
+        'employeeId': 'FAC-1009',
+      },
+    ];
+
+    final batch = _db.batch();
+    for (final item in faculty) {
+      final docRef = _db.collection('users').doc(item['id'] as String);
+      batch.set(
+        docRef,
+        {
+          'uid': item['id'],
+          'uid_firebase': item['id'],
+          'name': item['name'],
+          'email': item['email'],
+          'role': 'faculty',
+          'department': item['department'],
+          'fcm_token': '',
+          'created_at': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      batch.set(
+        _db.collection('faculty').doc(item['id'] as String),
+        {
+          'user_id': item['id'],
+          'employee_id': item['employeeId'],
+          'designation': 'Assistant Professor',
+          'department': item['department'],
+          'classroom_teacher_id': null,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    await batch.commit();
   }
 
   Future<void> resetCanonicalDataset({
@@ -1645,6 +1829,19 @@ class AdminModuleService {
     }
     return chunks;
   }
+
+  Future<_FacultyAssignment?> _resolveFacultyAssignment(String email, String name) async {
+    final uid = await _resolveUidByEmail(email);
+    if (uid == null || uid.trim().isEmpty) return null;
+    return _FacultyAssignment(uid, name);
+  }
+}
+
+class _FacultyAssignment {
+  final String uid;
+  final String name;
+
+  const _FacultyAssignment(this.uid, this.name);
 }
 
 class CleanupReport {

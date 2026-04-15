@@ -20,6 +20,7 @@ import '../models/submission_model.dart';
 import '../models/study_material.dart';
 import '../models/notification_model.dart';
 import 'storage_service.dart';
+import 'admin_module_service.dart';
 
 class FacultyDashboardData {
   final List<CourseModel> courses;
@@ -104,6 +105,7 @@ class FacultyModuleService {
     required String firebaseUid,
     required String userDocId,
   }) async {
+    await AdminModuleService.instance.ensureCourseCatalog();
     final facultyIds = _uniqueIds([firebaseUid, userDocId]);
     final courses = await _fetchCoursesForFaculty(facultyIds);
     final courseIds = courses.map((course) => course.courseId).toList();
