@@ -161,7 +161,7 @@ class AuthProvider extends ChangeNotifier {
         await _fetchUserData(uid);
       }
 
-      if (!isDemoAccount && normalizedEmail == 'student1@iiitn.ac.in') {
+      if (normalizedEmail == 'student1@iiitn.ac.in') {
         await _authService.ensureDemoStudentSemesterFive(
           uid: uid,
           email: email,

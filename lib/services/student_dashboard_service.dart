@@ -67,24 +67,6 @@ class StudentDashboardService {
       fallback: studentProfile?.semester,
     );
 
-    if ((latestSemester ?? 0) > 0) {
-      final seedStudentId = firebaseUid.trim().isNotEmpty
-          ? firebaseUid.trim()
-          : (user.uidFirebase.trim().isNotEmpty ? user.uidFirebase.trim() : user.id.trim());
-      if (seedStudentId.isNotEmpty) {
-        final department = studentProfile?.department.trim().isNotEmpty == true
-            ? studentProfile!.department.trim()
-            : user.department.trim();
-        if (department.isNotEmpty) {
-          await AdminModuleService.instance.seedSemesterEnrollments(
-            studentId: seedStudentId,
-            department: department,
-            semester: latestSemester!,
-          );
-        }
-      }
-    }
-
     var currentEnrollments = await _fetchEnrollments(
       collection: 'enrollments',
       candidateIds: candidateIds,

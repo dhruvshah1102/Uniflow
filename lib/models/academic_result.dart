@@ -13,6 +13,7 @@ class AcademicResultItem {
   final int gradePoint;
   final String? uploadedBy;
   final String? status;
+  final bool isDemoSeed;
   final Timestamp? updatedAt;
 
   const AcademicResultItem({
@@ -28,6 +29,7 @@ class AcademicResultItem {
     required this.gradePoint,
     this.uploadedBy,
     this.status,
+    this.isDemoSeed = false,
     this.updatedAt,
   });
 
@@ -47,6 +49,7 @@ class AcademicResultItem {
       gradePoint: gradePointForGrade(grade),
       uploadedBy: _string(map['uploadedBy'] ?? map['uploaded_by']),
       status: _string(map['status']),
+      isDemoSeed: map['isDemoSeed'] == true,
       updatedAt: _timestamp(map['updatedAt'] ?? map['uploaded_at']),
     );
   }
@@ -66,6 +69,7 @@ class AcademicResultItem {
       'gradePoint': gradePoint,
       if (uploadedBy != null) 'uploadedBy': uploadedBy,
       if (status != null) 'status': status,
+      if (isDemoSeed) 'isDemoSeed': isDemoSeed,
       if (updatedAt != null) 'updatedAt': updatedAt,
     };
   }

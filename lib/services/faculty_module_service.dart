@@ -876,6 +876,7 @@ class FacultyModuleService {
         'grade': grade,
         'gradePoint': gradePointForGrade(grade),
         'status': 'published',
+        'isDemoSeed': false,
         'uploadedBy': facultyId,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));

@@ -90,6 +90,7 @@ class FacultyDashboardScreen extends StatefulWidget {
 class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
   final FacultyModuleService _service = FacultyModuleService.instance;
   Stream<FacultyDashboardData>? _stream;
+  FacultyDashboardData? _latestData;
   _FacultyTab _tab = _FacultyTab.dashboard;
 
   @override
@@ -196,7 +197,25 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       body: StreamBuilder<FacultyDashboardData>(
         stream: _stream,
         builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _latestData = snapshot.data;
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
+            if (_latestData != null) {
+              final user = auth.currentUser!;
+              final facultyProfile = auth.facultyProfile;
+              return _buildSelectedTab(
+                _latestData!,
+                user.name,
+                user.email,
+                facultyProfile?.department ?? '-',
+                facultyProfile?.designation ?? '-',
+                facultyProfile?.employeeId ?? '-',
+                firebaseUser.uid,
+                () => auth.logout(),
+              );
+            }
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
@@ -229,6 +248,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
 
           final data =
               snapshot.data ??
+              _latestData ??
               const FacultyDashboardData(
                 courses: [],
                 studentCountByCourse: {},
@@ -238,6 +258,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
                 announcements: [],
                 pendingTasks: 0,
               );
+          _latestData = data;
 
           return _buildSelectedTab(
             data,

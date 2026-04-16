@@ -21,6 +21,7 @@ class AcademicResultsService {
       (snapshot) {
         final results = snapshot.docs
             .map((doc) => AcademicResultItem.fromMap(doc.data(), doc.id))
+            .where((item) => !item.isDemoSeed)
             .toList()
           ..sort((a, b) {
             final semesterCompare = a.semester.compareTo(b.semester);

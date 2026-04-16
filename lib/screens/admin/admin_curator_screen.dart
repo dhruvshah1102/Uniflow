@@ -22,6 +22,8 @@ class _AdminCuratorScreenState extends State<AdminCuratorScreen> {
   _Tab _tab = _Tab.dashboard;
   Stream<AdminOverview>? _overviewStream;
   Stream<List<CourseReportItem>>? _reportsStream;
+  AdminOverview? _latestOverview;
+  List<CourseReportItem>? _latestReports;
 
   @override
   void didChangeDependencies() {
@@ -138,8 +140,17 @@ class _DashboardTab extends StatelessWidget {
     return StreamBuilder<AdminOverview>(
       stream: overviewStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        final state = context.findAncestorStateOfType<_AdminCuratorScreenState>();
+        if (snapshot.hasData) {
+          state?._latestOverview = snapshot.data;
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          final cached = state?._latestOverview;
+          if (cached != null) {
+            return _AdminDashboardContent(data: cached, onRefresh: onRefresh);
+          }
           return const Center(child: CircularProgressIndicator());
+        }
         if (snapshot.hasError)
           return _ErrorState(
             text: snapshot.error.toString(),
@@ -147,86 +158,103 @@ class _DashboardTab extends StatelessWidget {
           );
         final data =
             snapshot.data ??
+            state?._latestOverview ??
             const AdminOverview(
               totalStudents: 0,
               totalFaculty: 0,
               totalCourses: 0,
               pendingRegistrations: 0,
             );
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
-          children: [
-            const Text(
-              'SYSTEM OVERVIEW',
-              style: TextStyle(
-                color: Color(0xFF01695B),
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Hello, Admin',
-              style: TextStyle(
-                color: AppColors.primaryDark,
-                fontWeight: FontWeight.w800,
-                fontSize: 42,
-                height: 1.1,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Welcome back to the IIIT Nagpur Academic Portal.',
-              style: TextStyle(color: AppColors.ink700),
-            ),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 44,
-              child: ElevatedButton.icon(
-                onPressed: onRefresh,
-                icon: const Icon(Icons.auto_graph),
-                label: const Text('Generate Report'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryDark,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            _MetricCard(
-              title: 'TOTAL STUDENTS',
-              value: '${data.totalStudents}',
-              leading: Icons.groups_2_outlined,
-              accent: AppColors.primaryDark,
-            ),
-            const SizedBox(height: 10),
-            _MetricCard(
-              title: 'TOTAL FACULTY',
-              value: '${data.totalFaculty}',
-              leading: Icons.school_outlined,
-              accent: const Color(0xFF01695B),
-            ),
-            const SizedBox(height: 10),
-            _MetricCard(
-              title: 'TOTAL COURSES',
-              value: '${data.totalCourses}',
-              leading: Icons.book_outlined,
-              accent: AppColors.primaryDark,
-            ),
-            const SizedBox(height: 10),
-            _MetricCard(
-              title: 'PENDING REGISTRATIONS',
-              value: '${data.pendingRegistrations}',
-              leading: Icons.assignment_late_outlined,
-              accent: AppColors.danger,
-            ),
-          ],
-        );
+        state?._latestOverview = data;
+        return _AdminDashboardContent(data: data, onRefresh: onRefresh);
       },
+    );
+  }
+}
+
+class _AdminDashboardContent extends StatelessWidget {
+  final AdminOverview data;
+  final Future<void> Function() onRefresh;
+
+  const _AdminDashboardContent({
+    required this.data,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+      children: [
+        const Text(
+          'SYSTEM OVERVIEW',
+          style: TextStyle(
+            color: Color(0xFF01695B),
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Hello, Admin',
+          style: TextStyle(
+            color: AppColors.primaryDark,
+            fontWeight: FontWeight.w800,
+            fontSize: 42,
+            height: 1.1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Welcome back to the IIIT Nagpur Academic Portal.',
+          style: TextStyle(color: AppColors.ink700),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 44,
+          child: ElevatedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.auto_graph),
+            label: const Text('Generate Report'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryDark,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _MetricCard(
+          title: 'TOTAL STUDENTS',
+          value: '${data.totalStudents}',
+          leading: Icons.groups_2_outlined,
+          accent: AppColors.primaryDark,
+        ),
+        const SizedBox(height: 10),
+        _MetricCard(
+          title: 'TOTAL FACULTY',
+          value: '${data.totalFaculty}',
+          leading: Icons.school_outlined,
+          accent: const Color(0xFF01695B),
+        ),
+        const SizedBox(height: 10),
+        _MetricCard(
+          title: 'TOTAL COURSES',
+          value: '${data.totalCourses}',
+          leading: Icons.book_outlined,
+          accent: AppColors.primaryDark,
+        ),
+        const SizedBox(height: 10),
+        _MetricCard(
+          title: 'PENDING REGISTRATIONS',
+          value: '${data.pendingRegistrations}',
+          leading: Icons.assignment_late_outlined,
+          accent: AppColors.danger,
+        ),
+      ],
     );
   }
 }
@@ -666,57 +694,82 @@ class _ReportsTab extends StatelessWidget {
     return StreamBuilder<List<CourseReportItem>>(
       stream: reportsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        final state = context.findAncestorStateOfType<_AdminCuratorScreenState>();
+        if (snapshot.hasData) {
+          state?._latestReports = snapshot.data;
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          final cached = state?._latestReports;
+          if (cached != null) {
+            return _ReportsContent(reports: cached, onRefresh: onRefresh);
+          }
           return const Center(child: CircularProgressIndicator());
+        }
         if (snapshot.hasError)
           return _ErrorState(
             text: snapshot.error.toString(),
             onRetry: onRefresh,
           );
-        final reports = snapshot.data ?? [];
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          children: [
-            const Text(
-              'Reports & Analytics',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 44,
-                color: AppColors.primaryDark,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...reports.map(
-              (report) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  child: ListTile(
-                    leading: const Icon(
-                      Icons.analytics_outlined,
-                      color: AppColors.primaryDark,
-                    ),
-                    title: Text(
-                      '${report.course.code} - ${report.course.courseName}',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(
-                      'Students: ${report.totalStudents}\nAttendance: ${report.attendancePercent.toStringAsFixed(1)}%',
-                    ),
-                    isThreeLine: true,
-                  ),
-                ),
-              ),
-            ),
-            if (reports.isEmpty)
-              const Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No report data available.'),
-                ),
-              ),
-          ],
-        );
+        final reports = snapshot.data ?? state?._latestReports ?? [];
+        state?._latestReports = reports;
+        return _ReportsContent(reports: reports, onRefresh: onRefresh);
       },
+    );
+  }
+}
+
+class _ReportsContent extends StatelessWidget {
+  final List<CourseReportItem> reports;
+  final Future<void> Function() onRefresh;
+
+  const _ReportsContent({
+    required this.reports,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      children: [
+        const Text(
+          'Reports & Analytics',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 44,
+            color: AppColors.primaryDark,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...reports.map(
+          (report) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Card(
+              child: ListTile(
+                leading: const Icon(
+                  Icons.analytics_outlined,
+                  color: AppColors.primaryDark,
+                ),
+                title: Text(
+                  '${report.course.code} - ${report.course.courseName}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  'Students: ${report.totalStudents}\nAttendance: ${report.attendancePercent.toStringAsFixed(1)}%',
+                ),
+                isThreeLine: true,
+              ),
+            ),
+          ),
+        ),
+        if (reports.isEmpty)
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('No report data available.'),
+            ),
+          ),
+      ],
     );
   }
 }

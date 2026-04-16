@@ -403,6 +403,8 @@ class AuthService {
       );
     }
 
+    await _seedDemoTranscriptHistoryAndCurrentResults(uid: uid);
+    await _hideDemoSemesterFiveResults(uid: uid);
     await batch.commit();
 
     // Keep the student's visible semester aligned with the canonical data set.
@@ -554,39 +556,74 @@ class AuthService {
     required String uid,
     required String email,
   }) async {
-    await cleanupLegacyDemoData(uid: uid, role: 'student');
-    await _firestore.collection('users').doc(uid).set(
-      {
-        'name': 'Aarav Agarwal',
-        'email': email,
-        'role': 'student',
-        'uid_firebase': uid,
-        'fcm_token': '',
-        'created_at': FieldValue.serverTimestamp(),
-        'department': 'CSE',
-        'semester': 5,
-        'division': 'A',
-        'section': 'A',
-      },
-      SetOptions(merge: true),
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    final studentDoc = await _firestore.collection('students').doc(uid).get();
+    final transcriptDocs = await _firestore
+        .collection('transcripts')
+        .where('studentId', isEqualTo: uid)
+        .get();
+    final resultDocs = await _firestore
+        .collection('results')
+        .where('studentId', isEqualTo: uid)
+        .get();
+
+    final hasTranscriptHistory = [1, 2, 3, 4].every(
+      (sem) => transcriptDocs.docs.any((doc) => doc.id == '${uid}_sem_$sem'),
     );
-    await _firestore.collection('students').doc(uid).set(
-      {
-        'user_id': uid,
-        'enrollment_no': 'BT21CSE001',
-        'department': 'CSE',
-        'semester': 5,
-        'division': 'A',
-        'section': 'A',
-        'classroom_student_id': null,
-      },
-      SetOptions(merge: true),
-    );
+    final hasCurrentResults = resultDocs.docs.where((doc) {
+      final data = doc.data();
+      final semester = _semesterNumber(data['semester']) ?? 0;
+      if (semester != 5) return false;
+      final status = (data['status'] ?? '').toString().trim().toLowerCase();
+      return status == 'published';
+    }).length >= 6;
+
+    if (userDoc.exists &&
+        studentDoc.exists &&
+        hasTranscriptHistory &&
+        hasCurrentResults) {
+      return;
+    }
+
+    if (!userDoc.exists) {
+      await _firestore.collection('users').doc(uid).set(
+        {
+          'name': 'Aarav Agarwal',
+          'email': email,
+          'role': 'student',
+          'uid_firebase': uid,
+          'fcm_token': '',
+          'created_at': FieldValue.serverTimestamp(),
+          'department': 'CSE',
+          'semester': 5,
+          'division': 'A',
+          'section': 'A',
+        },
+        SetOptions(merge: true),
+      );
+    }
+
+    if (!studentDoc.exists) {
+      await _firestore.collection('students').doc(uid).set(
+        {
+          'user_id': uid,
+          'enrollment_no': 'BT21CSE001',
+          'department': 'CSE',
+          'semester': 5,
+          'division': 'A',
+          'section': 'A',
+          'classroom_student_id': null,
+        },
+        SetOptions(merge: true),
+      );
+    }
+
     await AdminModuleService.instance.seedSemesterEnrollments(
       studentId: uid,
       department: 'CSE',
       semester: 5,
     );
+    await _seedDemoTranscriptHistoryAndCurrentResults(uid: uid);
   }
 
   Future<void> purgeMistakenStudentAccount({
@@ -925,6 +962,119 @@ class AuthService {
       SetOptions(merge: true),
     );
 
+    await batch.commit();
+  }
+
+  Future<void> _seedDemoTranscriptHistoryAndCurrentResults({
+    required String uid,
+  }) async {
+    final transcriptSpecs = <Map<String, dynamic>>[
+      {
+        'semester': 1,
+        'courses': [
+          {'courseCode': 'CS101', 'courseName': 'Programming Fundamentals', 'credits': 4, 'marks': 88},
+          {'courseCode': 'CS102', 'courseName': 'Digital Logic Design', 'credits': 4, 'marks': 91},
+          {'courseCode': 'MA101', 'courseName': 'Engineering Mathematics I', 'credits': 3, 'marks': 79},
+          {'courseCode': 'EN101', 'courseName': 'Technical English', 'credits': 2, 'marks': 84},
+          {'courseCode': 'PH101', 'courseName': 'Applied Physics', 'credits': 3, 'marks': 73},
+          {'courseCode': 'CS103', 'courseName': 'Problem Solving Lab', 'credits': 2, 'marks': 86},
+        ],
+      },
+      {
+        'semester': 2,
+        'courses': [
+          {'courseCode': 'CS201', 'courseName': 'Data Structures', 'credits': 4, 'marks': 85},
+          {'courseCode': 'CS202', 'courseName': 'Computer Organization', 'credits': 4, 'marks': 78},
+          {'courseCode': 'MA201', 'courseName': 'Discrete Mathematics', 'credits': 3, 'marks': 87},
+          {'courseCode': 'EC201', 'courseName': 'Circuit Theory', 'credits': 3, 'marks': 72},
+          {'courseCode': 'HS201', 'courseName': 'Communication Skills', 'credits': 2, 'marks': 90},
+          {'courseCode': 'CS204', 'courseName': 'Programming Lab', 'credits': 2, 'marks': 88},
+        ],
+      },
+      {
+        'semester': 3,
+        'courses': [
+          {'courseCode': 'CS301', 'courseName': 'Design and Analysis of Algorithms', 'credits': 4, 'marks': 82},
+          {'courseCode': 'CS302', 'courseName': 'Operating Systems Basics', 'credits': 4, 'marks': 84},
+          {'courseCode': 'CS303', 'courseName': 'Database Systems', 'credits': 3, 'marks': 76},
+          {'courseCode': 'CS304', 'courseName': 'Object Oriented Programming', 'credits': 3, 'marks': 89},
+          {'courseCode': 'MA301', 'courseName': 'Probability and Statistics', 'credits': 3, 'marks': 71},
+          {'courseCode': 'CS305', 'courseName': 'Software Lab', 'credits': 2, 'marks': 87},
+        ],
+      },
+      {
+        'semester': 4,
+        'courses': [
+          {'courseCode': 'CS401', 'courseName': 'Computer Networks', 'credits': 4, 'marks': 78},
+          {'courseCode': 'CS402', 'courseName': 'Compiler Design', 'credits': 4, 'marks': 83},
+          {'courseCode': 'CS403', 'courseName': 'Software Engineering', 'credits': 3, 'marks': 74},
+          {'courseCode': 'CS404', 'courseName': 'Information Security', 'credits': 4, 'marks': 81},
+          {'courseCode': 'HS401', 'courseName': 'Professional Ethics', 'credits': 2, 'marks': 88},
+          {'courseCode': 'CS405', 'courseName': 'Mini Project', 'credits': 3, 'marks': 85},
+        ],
+      },
+    ];
+
+    final existingTranscriptDocs = await _firestore
+        .collection('transcripts')
+        .where('studentId', isEqualTo: uid)
+        .get();
+
+    final transcriptBatch = _firestore.batch();
+    for (final spec in transcriptSpecs) {
+      final semester = spec['semester'] as int;
+      final docId = '${uid}_sem_$semester';
+      if (existingTranscriptDocs.docs.any((doc) => doc.id == docId)) {
+        continue;
+      }
+
+      final courses = (spec['courses'] as List<dynamic>).map((course) {
+        final courseMap = course as Map<String, dynamic>;
+        final marks = courseMap['marks'] as int;
+        final grade = gradeFromMarks(marks);
+        return {
+          'courseCode': courseMap['courseCode'],
+          'courseName': courseMap['courseName'],
+          'credits': courseMap['credits'],
+          'marks': marks,
+          'grade': grade,
+        };
+      }).toList();
+
+      transcriptBatch.set(
+        _firestore.collection('transcripts').doc(docId),
+        {
+          'studentId': uid,
+          'semester': semester,
+          'courses': courses,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+    await transcriptBatch.commit();
+  }
+
+  Future<void> _hideDemoSemesterFiveResults({required String uid}) async {
+    final snap = await _firestore
+        .collection('results')
+        .where('studentId', isEqualTo: uid)
+        .where('semester', isEqualTo: 5)
+        .get();
+
+    if (snap.docs.isEmpty) return;
+
+    final batch = _firestore.batch();
+    for (final doc in snap.docs) {
+      batch.set(
+        doc.reference,
+        {
+          'isDemoSeed': true,
+          'status': 'published',
+        },
+        SetOptions(merge: true),
+      );
+    }
     await batch.commit();
   }
 

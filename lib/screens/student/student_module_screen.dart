@@ -54,6 +54,7 @@ class StudentDashboardScreen extends StatefulWidget {
 class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   final StudentDashboardService _service = StudentDashboardService.instance;
   Stream<StudentDashboardData>? _stream;
+  StudentDashboardData? _latestData;
   String? _boundFirebaseUid;
   _StudentTab _tab = _StudentTab.profile;
 
@@ -87,16 +88,15 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (auth.currentUser == null || firebaseUser == null) return;
 
-      setState(() {
-        _boundFirebaseUid = firebaseUser.uid;
-        _stream = _service.watchDashboard(
-          firebaseUid: firebaseUser.uid,
-          user: auth.currentUser!,
-          studentProfile: auth.studentProfile,
-          forceRefresh: true,
-        );
-      });
-    await _stream?.first;
+    setState(() {
+      _boundFirebaseUid = firebaseUser.uid;
+      _stream = _service.watchDashboard(
+        firebaseUid: firebaseUser.uid,
+        user: auth.currentUser!,
+        studentProfile: auth.studentProfile,
+        forceRefresh: true,
+      );
+    });
   }
 
   void _logout() {
@@ -213,7 +213,14 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
       body: StreamBuilder<StudentDashboardData>(
         stream: _stream,
         builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _latestData = snapshot.data;
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
+            if (_latestData != null) {
+              return _buildSelectedTab(_latestData!);
+            }
             return const LoadingSkeletonPage(cardCount: 5);
           }
 
@@ -226,13 +233,15 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           }
 
           final data = snapshot.data;
-          if (data == null) {
+          final resolvedData = data ?? _latestData;
+          if (resolvedData == null) {
             return const Center(
               child: Text('No student dashboard data found.'),
             );
           }
 
-          return _buildSelectedTab(data);
+          _latestData = resolvedData;
+          return _buildSelectedTab(resolvedData);
         },
       ),
       bottomNavigationBar: Container(
