@@ -8,7 +8,7 @@ import '../../services/student_dashboard_service.dart';
 import '../../widgets/common/loading_skeleton_page.dart';
 import 'course_detail_screen.dart';
 
-class StudentCourseRouteScreen extends StatelessWidget {
+class StudentCourseRouteScreen extends StatefulWidget {
   final String courseId;
   final String initialTab;
   final String? assignmentId;
@@ -23,6 +23,41 @@ class StudentCourseRouteScreen extends StatelessWidget {
   });
 
   @override
+  State<StudentCourseRouteScreen> createState() =>
+      _StudentCourseRouteScreenState();
+}
+
+class _StudentCourseRouteScreenState extends State<StudentCourseRouteScreen> {
+  final StudentDashboardService _service = StudentDashboardService.instance;
+  Stream<StudentDashboardData>? _stream;
+  String? _boundFirebaseUid;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ensureLoaded();
+  }
+
+  void _ensureLoaded() {
+    final auth = context.read<AuthProvider>();
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (auth.currentUser == null || firebaseUser == null) {
+      return;
+    }
+
+    if (_stream != null && _boundFirebaseUid == firebaseUser.uid) {
+      return;
+    }
+
+    _boundFirebaseUid = firebaseUser.uid;
+    _stream = _service.watchDashboard(
+      firebaseUid: firebaseUser.uid,
+      user: auth.currentUser!,
+      studentProfile: auth.studentProfile,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final firebaseUser = FirebaseAuth.instance.currentUser;
@@ -30,13 +65,14 @@ class StudentCourseRouteScreen extends StatelessWidget {
       return const Scaffold(body: LoadingSkeletonPage(cardCount: 3));
     }
 
-    final service = StudentDashboardService.instance;
+    _ensureLoaded();
+    final stream = _stream;
+    if (stream == null) {
+      return const Scaffold(body: LoadingSkeletonPage(cardCount: 4));
+    }
+
     return StreamBuilder<StudentDashboardData>(
-      stream: service.watchDashboard(
-        firebaseUid: firebaseUser.uid,
-        user: auth.currentUser!,
-        studentProfile: auth.studentProfile,
-      ),
+      stream: stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: LoadingSkeletonPage(cardCount: 4));
@@ -57,13 +93,18 @@ class StudentCourseRouteScreen extends StatelessWidget {
 
         final data = snapshot.data;
         if (data == null) {
-          return const Scaffold(body: Center(child: Text('No student data found.')));
+          return const Scaffold(
+            body: Center(child: Text('No student data found.')),
+          );
         }
 
-        final allCourses = <dynamic>[...data.currentCourses, ...data.upcomingCourses];
+        final allCourses = <dynamic>[
+          ...data.currentCourses,
+          ...data.upcomingCourses,
+        ];
         CourseDashboardItem? course;
         for (final item in allCourses) {
-          if (item.course.courseId == courseId) {
+          if (item.course.courseId == widget.courseId) {
             course = item;
             break;
           }
@@ -80,9 +121,9 @@ class StudentCourseRouteScreen extends StatelessWidget {
         return CourseDetailScreen(
           course: course,
           data: data,
-          initialTab: initialTab,
-          highlightAssignmentId: assignmentId,
-          highlightQuizId: quizId,
+          initialTab: widget.initialTab,
+          highlightAssignmentId: widget.assignmentId,
+          highlightQuizId: widget.quizId,
         );
       },
     );
