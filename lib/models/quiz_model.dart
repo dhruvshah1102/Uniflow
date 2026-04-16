@@ -27,8 +27,8 @@ class QuizModel {
       courseId: map['course_id'] ?? '',
       facultyId: map['faculty_id'] ?? '',
       title: map['title'] ?? '',
-      startTime: map['start_time'] ?? Timestamp.now(),
-      endTime: map['end_time'] ?? Timestamp.now(),
+      startTime: _timestamp(map['start_time']) ?? Timestamp.now(),
+      endTime: _timestamp(map['end_time']) ?? Timestamp.now(),
       totalMarks: map['total_marks']?.toInt() ?? 0,
       classroomQuizId: map['classroom_quiz_id'],
     );
@@ -45,4 +45,14 @@ class QuizModel {
       'classroom_quiz_id': classroomQuizId,
     };
   }
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

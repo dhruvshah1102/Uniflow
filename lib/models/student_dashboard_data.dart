@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/attendance.dart';
 import '../models/assignment.dart';
 import '../models/course.dart';
@@ -46,6 +48,51 @@ class StudentDashboardData {
       notifications.where((item) => !item.read).length;
 
   List<CourseDashboardItem> get courses => currentCourses;
+
+  factory StudentDashboardData.fromMap(Map<String, dynamic> map) {
+    return StudentDashboardData(
+      user: UserModel.fromMap(_map(map['user']), _string(_map(map['user'])['uid']) ?? _string(_map(map['user'])['id']) ?? ''),
+      studentProfile: map['studentProfile'] == null
+          ? null
+          : StudentModel.fromMap(
+              _map(map['studentProfile']),
+              _string(_map(map['studentProfile'])['id']) ?? '',
+            ),
+      overallAttendance: _double(map['overallAttendance']) ?? 0.0,
+      attendanceRecords: _list(map['attendanceRecords'])
+          .map((item) => AttendanceModel.fromMap(_map(item), _string(_map(item)['attendanceId']) ?? ''))
+          .toList(),
+      currentCourses: _list(map['currentCourses'])
+          .map((item) => CourseDashboardItem.fromMap(_map(item)))
+          .toList(),
+      upcomingCourses: _list(map['upcomingCourses'])
+          .map((item) => UpcomingCourseDashboardItem.fromMap(_map(item)))
+          .toList(),
+      pendingTasks: _list(map['pendingTasks'])
+          .map((item) => DashboardTaskItem.fromMap(_map(item)))
+          .toList(),
+      quizzes: _list(map['quizzes'])
+          .map((item) => QuizDashboardItem.fromMap(_map(item)))
+          .toList(),
+      quizSubmissions: _list(map['quizSubmissions'])
+          .map((item) => QuizSubmissionModel.fromMap(_map(item), _string(_map(item)['id']) ?? ''))
+          .toList(),
+      studyMaterials: _list(map['studyMaterials'])
+          .map((item) => StudyMaterialDashboardItem.fromMap(_map(item)))
+          .toList(),
+      notifications: _list(map['notifications'])
+          .map((item) => DashboardNotificationItem.fromMap(_map(item)))
+          .toList(),
+      nextDeadline: _timestamp(map['nextDeadline'])?.toDate(),
+      nextSemesterRegistration: map['nextSemesterRegistration'] == null
+          ? null
+          : SemesterRegistrationRecord.fromMap(
+              _map(map['nextSemesterRegistration']),
+              _string(_map(map['nextSemesterRegistration'])['id']) ?? '',
+            ),
+      registrationOpen: map['registrationOpen'] == true,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -150,6 +197,18 @@ class CourseDashboardItem {
       'nextDeadline': nextDeadline?.toIso8601String(),
     };
   }
+
+  factory CourseDashboardItem.fromMap(Map<String, dynamic> map) {
+    return CourseDashboardItem(
+      course: CourseModel.fromMap(map, _string(map['courseId']) ?? ''),
+      facultyName: _string(map['facultyName']) ?? '',
+      attendancePercentage: _double(map['attendancePercentage']) ?? 0.0,
+      presentClasses: _int(map['presentClasses']) ?? 0,
+      totalClasses: _int(map['totalClasses']) ?? 0,
+      pendingTaskCount: _int(map['pendingTaskCount']) ?? 0,
+      nextDeadline: _timestamp(map['nextDeadline'])?.toDate(),
+    );
+  }
 }
 
 class UpcomingCourseDashboardItem {
@@ -171,6 +230,13 @@ class UpcomingCourseDashboardItem {
       'semester': course.semester,
       'semesterNumber': course.semesterNumber,
     };
+  }
+
+  factory UpcomingCourseDashboardItem.fromMap(Map<String, dynamic> map) {
+    return UpcomingCourseDashboardItem(
+      course: CourseModel.fromMap(map, _string(map['courseId']) ?? ''),
+      facultyName: _string(map['facultyName']) ?? '',
+    );
   }
 }
 
@@ -199,6 +265,15 @@ class DashboardTaskItem {
       'isOverdue': isOverdue,
     };
   }
+
+  factory DashboardTaskItem.fromMap(Map<String, dynamic> map) {
+    final assignment = AssignmentModel.fromMap(map, _string(map['assignmentId']) ?? '');
+    return DashboardTaskItem(
+      assignment: assignment,
+      courseCode: _string(map['courseCode']) ?? '',
+      isOverdue: map['isOverdue'] == true,
+    );
+  }
 }
 
 class DashboardNotificationItem {
@@ -219,6 +294,12 @@ class DashboardNotificationItem {
       'read': notification.read,
       'createdAt': createdAt.toIso8601String(),
     };
+  }
+
+  factory DashboardNotificationItem.fromMap(Map<String, dynamic> map) {
+    return DashboardNotificationItem(
+      notification: NotificationModel.fromMap(map, _string(map['notificationId']) ?? ''),
+    );
   }
 }
 
@@ -250,6 +331,15 @@ class QuizDashboardItem {
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
     };
+  }
+
+  factory QuizDashboardItem.fromMap(Map<String, dynamic> map) {
+    return QuizDashboardItem(
+      quiz: QuizModel.fromMap(map, _string(map['quizId']) ?? ''),
+      courseCode: _string(map['courseCode']) ?? '',
+      courseTitle: _string(map['courseTitle']) ?? '',
+      questionCount: _int(map['questionCount']) ?? 0,
+    );
   }
 }
 
@@ -291,6 +381,14 @@ class StudyMaterialDashboardItem {
       'uploadedAt': uploadedAt.toIso8601String(),
     };
   }
+
+  factory StudyMaterialDashboardItem.fromMap(Map<String, dynamic> map) {
+    return StudyMaterialDashboardItem(
+      material: StudyMaterialModel.fromMap(map, _string(map['materialId']) ?? ''),
+      courseCode: _string(map['courseCode']) ?? '',
+      courseTitle: _string(map['courseTitle']) ?? '',
+    );
+  }
 }
 
 class AttendanceSummary {
@@ -331,4 +429,46 @@ AttendanceSummary buildAttendanceSummary({
     presentClasses: presentClasses,
     totalClasses: totalClasses,
   );
+}
+
+Map<String, dynamic> _map(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) {
+    return value.map((key, entry) => MapEntry(key.toString(), entry));
+  }
+  return <String, dynamic>{};
+}
+
+List<dynamic> _list(dynamic value) {
+  if (value is List) return value;
+  return const <dynamic>[];
+}
+
+String? _string(dynamic value) {
+  if (value == null) return null;
+  return value.toString().trim();
+}
+
+int? _int(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+double? _double(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

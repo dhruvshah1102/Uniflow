@@ -58,9 +58,7 @@ class CourseModel {
       semester: semesterNumber > 0 ? 'Semester $semesterNumber' : 'Semester -',
       semesterNumber: semesterNumber,
       department: (data['department'] ?? '').toString(),
-      createdAt: data['createdAt'] is Timestamp
-          ? data['createdAt']
-          : Timestamp.now(),
+      createdAt: _timestamp(data['createdAt']) ?? Timestamp.now(),
     );
   }
 
@@ -85,4 +83,14 @@ class CourseModel {
       'createdAt': createdAt,
     };
   }
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

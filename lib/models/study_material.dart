@@ -31,7 +31,7 @@ class StudyMaterialModel {
           .toString(),
       fileUrl: (data['fileUrl'] ?? '').toString(),
       uploadedBy: (data['uploadedBy'] ?? '').toString(),
-      uploadedAt: data['uploadedAt'] ?? Timestamp.now(),
+      uploadedAt: _timestamp(data['uploadedAt']) ?? Timestamp.now(),
       storagePath: (data['storagePath'] ?? '').toString(),
       contentType: (data['contentType'] ?? '').toString(),
       fileSize:
@@ -53,4 +53,14 @@ class StudyMaterialModel {
       if (fileSize > 0) 'fileSize': fileSize,
     };
   }
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

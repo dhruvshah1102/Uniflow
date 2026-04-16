@@ -8,6 +8,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/academic_results_service.dart';
 import '../../services/transcript_service.dart';
 import '../../services/pdf_helper.dart';
+import '../../widgets/common/loading_skeleton_page.dart';
 
 class StudentGradesScreen extends StatelessWidget {
   const StudentGradesScreen({super.key});
@@ -18,7 +19,7 @@ class StudentGradesScreen extends StatelessWidget {
     final student = auth.studentProfile;
 
     if (auth.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingSkeletonPage(cardCount: 3);
     }
 
     if (auth.currentUser == null || student == null) {
@@ -32,7 +33,7 @@ class StudentGradesScreen extends StatelessWidget {
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const LoadingSkeletonPage(cardCount: 4);
         }
 
         if (snapshot.hasError) {

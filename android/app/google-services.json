@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "744515142102",
-    "project_id": "uniflow-bf05e",
-    "storage_bucket": "uniflow-bf05e.firebasestorage.app"
+    "project_number": "256211254063",
+    "project_id": "uniflow2-63ee5",
+    "storage_bucket": "uniflow2-63ee5.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:744515142102:android:fec5f58a13fc9335e0a477",
+        "mobilesdk_app_id": "1:256211254063:android:4c442fab2739776b2affda",
         "android_client_info": {
           "package_name": "com.example.uniflow"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAHiDpsJSQjlovi6wCyM0bgXHnzMJxHfNs"
+          "current_key": "AIzaSyBAtUR_cAldreZGIj6Qaz90YwrpvDlaf-c"
         }
       ],
       "services": {

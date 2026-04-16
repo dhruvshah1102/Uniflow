@@ -21,6 +21,7 @@ import '../../services/student_dashboard_service.dart';
 import '../../services/semester_registration_service.dart';
 import 'quiz_result_sheet.dart';
 import 'course_detail_screen.dart' as course_detail;
+import '../../widgets/common/loading_skeleton_page.dart';
 
 enum _StudentTab { courses, attendance, grades, notifications, profile }
 
@@ -86,14 +87,15 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (auth.currentUser == null || firebaseUser == null) return;
 
-    setState(() {
-      _boundFirebaseUid = firebaseUser.uid;
-      _stream = _service.watchDashboard(
-        firebaseUid: firebaseUser.uid,
-        user: auth.currentUser!,
-        studentProfile: auth.studentProfile,
-      );
-    });
+      setState(() {
+        _boundFirebaseUid = firebaseUser.uid;
+        _stream = _service.watchDashboard(
+          firebaseUid: firebaseUser.uid,
+          user: auth.currentUser!,
+          studentProfile: auth.studentProfile,
+          forceRefresh: true,
+        );
+      });
     await _stream?.first;
   }
 
@@ -146,7 +148,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
     final auth = context.watch<AuthProvider>();
 
     if (auth.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: LoadingSkeletonPage(cardCount: 4));
     }
 
     if (auth.currentUser == null) {
@@ -212,7 +214,7 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
         stream: _stream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingSkeletonPage(cardCount: 5);
           }
 
           if (snapshot.hasError) {
@@ -2075,7 +2077,7 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen>
         future: _questionsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const LoadingSkeletonPage(cardCount: 4, showHeader: false);
           }
           if (snapshot.hasError) {
             return Center(
@@ -2225,7 +2227,12 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen>
 
 class _AnnouncementCard extends StatefulWidget {
   final DashboardNotificationItem notification;
-  const _AnnouncementCard({required this.notification});
+  final Future<void> Function(DashboardNotificationItem note) onAction;
+
+  const _AnnouncementCard({
+    required this.notification,
+    required this.onAction,
+  });
 
   @override
   State<_AnnouncementCard> createState() => _AnnouncementCardState();
@@ -2233,10 +2240,6 @@ class _AnnouncementCard extends StatefulWidget {
 
 class _AnnouncementCardState extends State<_AnnouncementCard> {
   bool _expanded = false;
-
-  Future<String> _routeForNotification() async {
-    return _resolveLegacyNoticeRoute(widget.notification);
-  }
 
   String get _actionText {
     switch (widget.notification.notification.type.toLowerCase()) {
@@ -2371,9 +2374,7 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
                                     foregroundColor: AppColors.primaryDark,
                                   ),
                                   onPressed: () async {
-                                    final route = await _routeForNotification();
-                                    if (route.isNotEmpty && context.mounted)
-                                      context.push(route);
+                                    await widget.onAction(widget.notification);
                                   },
                                   child: Text(
                                     _actionText,
@@ -3008,6 +3009,80 @@ class _NotificationsTabState extends State<_NotificationsTab> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
+  QuizSubmissionModel? _submissionForQuiz(String quizId) {
+    for (final submission in widget.data.quizSubmissions) {
+      if (submission.quizId == quizId) return submission;
+    }
+    return null;
+  }
+
+  DashboardTaskItem? _taskForNotification(DashboardNotificationItem note) {
+    final assignmentId =
+        (note.notification.assignmentId?.trim().isNotEmpty == true)
+            ? note.notification.assignmentId!.trim()
+            : note.notification.sourceId?.trim();
+    if (assignmentId == null || assignmentId.isEmpty) return null;
+
+    for (final task in widget.data.pendingTasks) {
+      if (task.assignment.assignmentId == assignmentId) return task;
+    }
+    return null;
+  }
+
+  QuizDashboardItem? _quizForNotification(DashboardNotificationItem note) {
+    final quizId = (note.notification.quizId?.trim().isNotEmpty == true)
+        ? note.notification.quizId!.trim()
+        : note.notification.sourceId?.trim();
+    if (quizId == null || quizId.isEmpty) return null;
+
+    for (final quiz in widget.data.quizzes) {
+      if (quiz.quiz.id == quizId) return quiz;
+    }
+    return null;
+  }
+
+  Future<void> _openNotice(DashboardNotificationItem note) async {
+    final task = _taskForNotification(note);
+    if (task != null) {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => AssignmentDetailsScreen(
+            assignment: task.assignment,
+            courseCode: task.courseCode,
+          ),
+        ),
+      );
+      return;
+    }
+
+    final quiz = _quizForNotification(note);
+    if (quiz != null) {
+      final submission = _submissionForQuiz(quiz.quiz.id);
+      if (!mounted) return;
+
+      if (submission != null) {
+        await showQuizResultSheet(
+          context: context,
+          quiz: quiz,
+          submission: submission,
+        );
+      } else {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => QuizAttemptScreen(quiz: quiz),
+          ),
+        );
+      }
+      return;
+    }
+
+    final route = await _resolveLegacyNoticeRoute(note);
+    if (route.isNotEmpty && mounted) {
+      context.push(route);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = [...widget.data.notifications]
@@ -3160,7 +3235,10 @@ class _NotificationsTabState extends State<_NotificationsTab> {
           }
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _AnnouncementCard(notification: items[index - 1]),
+            child: _AnnouncementCard(
+              notification: items[index - 1],
+              onAction: _openNotice,
+            ),
           );
         }, childCount: items.length + 1),
       ),

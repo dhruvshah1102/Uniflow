@@ -29,11 +29,11 @@ class AssignmentModel {
       courseId: data['courseId'] ?? '',
       title: data['title'] ?? '',
       description: data['description'] ?? '',
-      dueDate: data['dueDate'] ?? Timestamp.now(),
+      dueDate: _timestamp(data['dueDate']) ?? Timestamp.now(),
       createdBy: data['createdBy'] ?? '',
       status: data['status'] ?? 'pending',
       totalMarks: data['total_marks'] ?? data['totalMarks'] ?? 100,
-      createdAt: data['createdAt'] ?? Timestamp.now(),
+      createdAt: _timestamp(data['createdAt']) ?? Timestamp.now(),
     );
   }
 
@@ -49,4 +49,14 @@ class AssignmentModel {
       'createdAt': createdAt,
     };
   }
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

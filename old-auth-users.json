@@ -1,0 +1,171 @@
+{"users": [
+{
+  "localId": "0QKuOu30cwSM2QPlaB1y4r4Gywl2",
+  "email": "student1@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "QHo2qFEYocms1JFoLfNomwP0a3QKHDVEU2LA1CZYEE7Llwdjo+0iUcTKYA4uWx8M8LfwWOsR1zV1Mk6AqLoKuQ==",
+  "salt": "to/cPNcHHlJGGA==",
+  "lastSignedInAt": "1776330314500",
+  "createdAt": "1775642004169",
+  "providerUserInfo": []
+},
+{
+  "localId": "FJ7uOEsYMxSqWvGgSpcMOvrgFOM2",
+  "email": "dhruv@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "aZk808Py0SH8pN/cAd9oIfR1Ty4A6kKsuB26CuWyJETd7SgD4G0EGFF9d1bDGnu+Ib047sE3Q0FWIzd9evZT5g==",
+  "salt": "O5OCtxuK+pabAw==",
+  "lastSignedInAt": "1776235106533",
+  "createdAt": "1776234975835",
+  "providerUserInfo": []
+},
+{
+  "localId": "FQib5uH7sWh0RwGcu4nygAEmPsi1",
+  "email": "hansraj@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "5XvmVhkQGoigLQcEZRmNsiK4Qb2W2jJa4SHKHOCw3LF59RycQvFCg5UTMabZ4ke4iiA33z9dlc/hYkv2xnlNdg==",
+  "salt": "5ErestBheA/WjQ==",
+  "lastSignedInAt": "1776282490341",
+  "createdAt": "1776236709378",
+  "providerUserInfo": []
+},
+{
+  "localId": "LzUmC9RqYmQHAsds1BqiTQru6un1",
+  "email": "prathmesh@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "eHXL2rdWRSnzr0bCSVWzSK5ZvCYVprnYd/OF+vTopG0NUwqo+zJjfwcrubtBfrfFr2553B8z+DIWJMuZhktNwA==",
+  "salt": "Vi8evvnN2N03+w==",
+  "lastSignedInAt": "1776196712033",
+  "createdAt": "1776196712033",
+  "providerUserInfo": []
+},
+{
+  "localId": "MyZj4jhQvCSIFKCzZt1quDxluD22",
+  "email": "test1@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "YDpWCeOQAYcTIrFqSpLWnZ/7HOkgtUB+z+fcQcjPIH+ZM2cIZkw4ITLz4FYrOwba34XOtfE/3a8jL/JaqL+5Lg==",
+  "salt": "Ca8K7jzerZ48gw==",
+  "lastSignedInAt": "1776233371383",
+  "createdAt": "1776205674182",
+  "providerUserInfo": []
+},
+{
+  "localId": "OEZ1MKs2uoQ40A18U7vvFZ5TJqa2",
+  "email": "h2@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "YolHSDozajlx4YpAFi0y4GZOtugOctiVs8rGDZ77Shf2hsNnO+wUeixdAmvHKmdDpa5DK6od4AD0OdjVXVluVw==",
+  "salt": "eDwzvg/UgQ80AQ==",
+  "lastSignedInAt": "1776283729516",
+  "createdAt": "1776283729516",
+  "providerUserInfo": []
+},
+{
+  "localId": "OxP1vcB0OPdzv8sXyoXMD1VDQG92",
+  "email": "prathamesh@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "8w4CnTUnGGqP8ayYSQlTszkNNU/Yw7T2JO4FW6M/KRSPizetNihwb9sEAmRnj/y3L7XbSOvbk4MR/ndnq3vXjQ==",
+  "salt": "kQnSkg8wGIzR6A==",
+  "lastSignedInAt": "1776195305709",
+  "createdAt": "1776195305709",
+  "providerUserInfo": []
+},
+{
+  "localId": "PA6tK0qvk0PizClIUX49fVqC2cX2",
+  "email": "dhruvshah@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "H0rcrjhVDHI/RmyyOUAtlZGUN2foqj2qkFPWv8G+NeZlM0VNo6Uys2ukMM4GkkTfMQ6NokrmgBNHbOM6um74Ow==",
+  "salt": "0hpR7UYWKHPzaw==",
+  "lastSignedInAt": "1776230010522",
+  "createdAt": "1776230010522",
+  "providerUserInfo": []
+},
+{
+  "localId": "TfATj8aFCaVd9sG6roVSsI5MuW32",
+  "email": "faculty1@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "xGv3HxOcc8YBPH7K65gB00vitm8FmX02OAdI8/IGf5vkRVz9rtfsJMenEU+iAQ1a3BUdNuR8eSAXUjZwJW61ow==",
+  "salt": "ssleViLiZFDRVg==",
+  "lastSignedInAt": "1776328198859",
+  "createdAt": "1775642887494",
+  "providerUserInfo": []
+},
+{
+  "localId": "aKY834aRvXhq2KmqUaCMu44TOu43",
+  "email": "dhruv@iiitn.ac.com",
+  "emailVerified": false,
+  "passwordHash": "jaVjW9o3pXKLjV/tj5usp8GmdvjhUUu1Bjz0GNJFO4fI6VsByg+02HEzpwum5Lquz0/kBSESnftNIRfDXerjqQ==",
+  "salt": "XujClTogpbG52w==",
+  "lastSignedInAt": "1776233595052",
+  "createdAt": "1776233595052",
+  "providerUserInfo": []
+},
+{
+  "localId": "dIY2ZzwYYvcSBwCFQpQyqrM0v3I2",
+  "email": "faculty@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "KJgppWZmUmfLC55CR9Du20Lje15VIEXvxa72Rb9ROHRuAtZsBELe7eOqwWXDyrnKugwRUZu4ihd2/zzifeP0RA==",
+  "salt": "2hWgfRi7KmNC6w==",
+  "lastSignedInAt": "1775509789073",
+  "createdAt": "1775509448421",
+  "providerUserInfo": []
+},
+{
+  "localId": "f5cuHyehETcWZHRuQgb251eUN2z2",
+  "email": "student@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "fxbq0aV9l9HW3gtmG7UmPDgSwZYJ+JH+D3xropjc7iawztFUPujxzJ+Zu5EMDgemnsHc8BHZkSXNBj4w6bJtVg==",
+  "salt": "7Ab2xgMa/Z0nRg==",
+  "lastSignedInAt": "1775642097997",
+  "createdAt": "1775509097618",
+  "providerUserInfo": []
+},
+{
+  "localId": "j2DPz3IX82T7QVzHmfL9saRwHaZ2",
+  "email": "h@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "ic2PG+Y9hNY8NUgyurXodtLLpnKpKuUzjOceqC9FkNeB+hE0hDYaX5hZN5J0LZgxjayHO+QX6jEKp4oc4gJKHg==",
+  "salt": "9aXJwjN1CfGGBQ==",
+  "lastSignedInAt": "1776283504747",
+  "createdAt": "1776283504747",
+  "providerUserInfo": []
+},
+{
+  "localId": "j6mGX6sUZ4Qmj08jvSXX6SHml5n1",
+  "email": "dhruvshah1@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "rLbWlU7qkESAVuasY/+HcQ8z+pAaEHYBnaHyR55UdS+UdeH5u7M+539PczYRFa3i10Wob83Ov31LPvcVBE77Kw==",
+  "salt": "WtMRkqhUxjXA3g==",
+  "lastSignedInAt": "1776234684809",
+  "createdAt": "1776233711527",
+  "providerUserInfo": []
+},
+{
+  "localId": "p89uaVfgzNOG6VYX1Wlmt51yTYH2",
+  "email": "test123@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "P/sUHCnqw7wR4MKQ1aWplnC3byZPpPfU7MUN8CPePB2Up28xhbiJ2dYozdJS3w4wyYz4UTW5cvKIQuJ9cewijA==",
+  "salt": "SfsUYWjbFK1s8w==",
+  "lastSignedInAt": "1776284010446",
+  "createdAt": "1776284010446",
+  "providerUserInfo": []
+},
+{
+  "localId": "wBQldBvzR1SIsqlcWDbJQPmJ8qo1",
+  "email": "admin@iiitn.ac.in",
+  "emailVerified": false,
+  "passwordHash": "T7WZ2ExmC5c/cXa9o9TnsAa98PHQ+q8BdQc8GYnMvTeJSnNzLNTCXcPPgyFUs7NWM5A+RmUMijaNpv/TrawlgA==",
+  "salt": "D7bghVQPiqczeQ==",
+  "lastSignedInAt": "1776328268730",
+  "createdAt": "1775509452758",
+  "providerUserInfo": []
+},
+{
+  "localId": "xdpfCkWjWmZgqEET70DAPbg28ly2",
+  "email": "test123@gmail.com",
+  "emailVerified": false,
+  "passwordHash": "O4e5s/CQPCE7d4A1yeh3ZLivMhjV8/fy4kfMcMDy8dj4a0Hl35+kjEhJyd6azbsT5QQXwXx/KYAqzQ3i6YCqTA==",
+  "salt": "NWZyeEjTEFzj3Q==",
+  "lastSignedInAt": "1776284010516",
+  "createdAt": "1776284010516",
+  "providerUserInfo": []
+}]}

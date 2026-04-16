@@ -90,9 +90,6 @@ class PushNotificationService {
   }
 
   Future<bool> bindUser(UserModel user) async {
-    _currentUserId = user.id;
-    _currentRole = user.role;
-
     final settings = await _messaging.requestPermission(
       alert: true,
       badge: true,
@@ -104,14 +101,24 @@ class PushNotificationService {
     );
 
     final token = await _messaging.getToken();
-    if (token != null && token.isNotEmpty) {
+    final alreadyBound = _currentUserId == user.id &&
+        _currentRole == user.role &&
+        _currentToken == token &&
+        _tokenRefreshSub != null;
+
+    _currentUserId = user.id;
+    _currentRole = user.role;
+
+    if (!alreadyBound && token != null && token.isNotEmpty) {
       await _persistToken(user, token);
     }
 
-    await _tokenRefreshSub?.cancel();
-    _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
-      await _persistToken(user, newToken);
-    });
+    if (!alreadyBound) {
+      await _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) async {
+        await _persistToken(user, newToken);
+      });
+    }
 
     await flushPendingNavigation();
     return settings.authorizationStatus == AuthorizationStatus.authorized ||

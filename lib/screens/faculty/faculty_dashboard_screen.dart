@@ -123,6 +123,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
       _stream = _service.watchDashboard(
         firebaseUid: firebaseUser.uid,
         userDocId: auth.currentUser!.id,
+        forceRefresh: true,
       );
     });
     await _stream?.first;

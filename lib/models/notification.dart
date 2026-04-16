@@ -56,7 +56,7 @@ class NotificationModel {
       quizId: data['quizId']?.toString(),
       deliveryCopy: data['deliveryCopy'] == true,
       read: data['read'] ?? false,
-      createdAt: data['createdAt'] ?? Timestamp.now(),
+      createdAt: _timestamp(data['createdAt']) ?? Timestamp.now(),
     );
   }
 
@@ -79,4 +79,14 @@ class NotificationModel {
       'createdAt': createdAt,
     };
   }
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

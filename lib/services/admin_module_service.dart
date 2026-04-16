@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 
 import '../firebase_options.dart';
 import 'canonical_firestore_reset_service.dart';
+import 'local_cache_service.dart';
 import 'semester_registration_service.dart';
 
 String? _string(dynamic value) {
@@ -169,6 +170,9 @@ class AdminModuleService {
   static final AdminModuleService instance = AdminModuleService._();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  Future<void>? _courseCatalogEnsureFuture;
+  Future<void>? _facultyRosterEnsureFuture;
+  static const String _courseCatalogReadyKey = 'course_catalog_ready_v1';
 
   Future<AdminOverview> fetchOverview() async {
     await _ensureSemesterOneCatalog();
@@ -197,7 +201,20 @@ class AdminModuleService {
     );
   }
 
-  Future<void> ensureCourseCatalog() async {
+  Future<void> ensureCourseCatalog({bool forceRefresh = false}) async {
+    if (!forceRefresh && await LocalCacheService.instance.exists(_courseCatalogReadyKey)) {
+      return;
+    }
+
+    _courseCatalogEnsureFuture ??= _ensureCourseCatalogOnce().catchError((error) {
+      _courseCatalogEnsureFuture = null;
+      throw error;
+    });
+    await _courseCatalogEnsureFuture!;
+    await LocalCacheService.instance.writeJson(_courseCatalogReadyKey, {'ready': true});
+  }
+
+  Future<void> _ensureCourseCatalogOnce() async {
     await ensureFacultyRoster();
     await _removeGeneratedSemesterFiveCatalog();
     await _ensureSemesterOneCatalog();
@@ -472,7 +489,7 @@ class AdminModuleService {
     }
 
     if (docsToDelete.isNotEmpty) {
-      await this._deleteRefs(docsToDelete.toList());
+      await _deleteRefs(docsToDelete.toList());
     }
 
     // Keep registration forms clean if they were tied to a deleted faculty-created course.
@@ -964,14 +981,14 @@ class AdminModuleService {
     final assignmentIds = assignmentsSnap.docs.map((doc) => doc.id).toList();
     if (assignmentIds.isNotEmpty) {
       await deleteAssignmentSubmissions(assignmentIds);
-      await this._deleteRefs(assignmentsSnap.docs.map((doc) => doc.reference).toList());
+      await _deleteRefs(assignmentsSnap.docs.map((doc) => doc.reference).toList());
     }
 
     final quizzesSnap = await _db.collection('quizzes').where('course_id', isEqualTo: normalizedCourseId).get();
     final quizIds = quizzesSnap.docs.map((doc) => doc.id).toList();
     if (quizIds.isNotEmpty) {
       await deleteQuizChildren(quizIds);
-      await this._deleteRefs(quizzesSnap.docs.map((doc) => doc.reference).toList());
+      await _deleteRefs(quizzesSnap.docs.map((doc) => doc.reference).toList());
     }
 
     await deleteByCourseField('enrollments');
@@ -990,7 +1007,7 @@ class AdminModuleService {
       }
     }
     if (registrationsToDelete.isNotEmpty) {
-      await this._deleteRefs(registrationsToDelete.toList());
+      await _deleteRefs(registrationsToDelete.toList());
     }
 
     final formsSnap = await _db.collection('registrationForms').get();
@@ -1312,6 +1329,13 @@ class AdminModuleService {
       final assignment = priyaCourseIds.contains(courseId)
           ? facultyRoster.first
           : otherFacultyRoster[otherIndex++ % otherFacultyRoster.length];
+      final data = doc.data();
+      final currentFacultyId = _string(data['facultyId']) ?? _string(data['faculty_id']) ?? '';
+      final currentFacultyName = _string(data['facultyName']) ?? _string(data['faculty_name']) ?? '';
+      if (currentFacultyId == assignment.uid && currentFacultyName == assignment.name) {
+        continue;
+      }
+
       batch.set(
         doc.reference,
         {
@@ -1332,6 +1356,14 @@ class AdminModuleService {
   }
 
   Future<void> ensureFacultyRoster() async {
+    _facultyRosterEnsureFuture ??= _ensureFacultyRosterOnce().catchError((error) {
+      _facultyRosterEnsureFuture = null;
+      throw error;
+    });
+    return _facultyRosterEnsureFuture!;
+  }
+
+  Future<void> _ensureFacultyRosterOnce() async {
     final faculty = <Map<String, dynamic>>[
       {
         'id': 'f002',
@@ -1394,31 +1426,62 @@ class AdminModuleService {
     final batch = _db.batch();
     for (final item in faculty) {
       final docRef = _db.collection('users').doc(item['id'] as String);
-      batch.set(
-        docRef,
-        {
-          'uid': item['id'],
-          'uid_firebase': item['id'],
-          'name': item['name'],
-          'email': item['email'],
-          'role': 'faculty',
-          'department': item['department'],
-          'fcm_token': '',
-          'created_at': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-      batch.set(
-        _db.collection('faculty').doc(item['id'] as String),
-        {
-          'user_id': item['id'],
-          'employee_id': item['employeeId'],
-          'designation': 'Assistant Professor',
-          'department': item['department'],
-          'classroom_teacher_id': null,
-        },
-        SetOptions(merge: true),
-      );
+      final userSnap = await docRef.get();
+      final userData = userSnap.data();
+      final expectedUserData = <String, dynamic>{
+        'uid': item['id'],
+        'uid_firebase': item['id'],
+        'name': item['name'],
+        'email': item['email'],
+        'role': 'faculty',
+        'department': item['department'],
+        'fcm_token': '',
+      };
+      final userMatches = userSnap.exists &&
+          userData != null &&
+          _string(userData['uid']) == expectedUserData['uid'] &&
+          _string(userData['uid_firebase']) == expectedUserData['uid_firebase'] &&
+          _string(userData['name']) == expectedUserData['name'] &&
+          _string(userData['email']) == expectedUserData['email'] &&
+          _string(userData['role'])?.toLowerCase() == 'faculty' &&
+          _string(userData['department']) == expectedUserData['department'] &&
+          _string(userData['fcm_token']) == '';
+
+      if (!userMatches) {
+        batch.set(
+          docRef,
+          {
+            ...expectedUserData,
+            'created_at': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+
+      final facultyRef = _db.collection('faculty').doc(item['id'] as String);
+      final facultySnap = await facultyRef.get();
+      final facultyData = facultySnap.data();
+      final facultyMatches = facultySnap.exists &&
+          facultyData != null &&
+          _string(facultyData['user_id']) == item['id'] &&
+          _string(facultyData['employee_id']) == item['employeeId'] &&
+          _string(facultyData['designation']) == 'Assistant Professor' &&
+          _string(facultyData['department']) == item['department'] &&
+          facultyData['classroom_teacher_id'] == null;
+
+      if (!facultyMatches) {
+        batch.set(
+          facultyRef,
+          {
+            'user_id': item['id'],
+            'employee_id': item['employeeId'],
+            'designation': 'Assistant Professor',
+            'department': item['department'],
+            'classroom_teacher_id': null,
+          },
+          SetOptions(merge: true),
+        );
+      }
     }
 
     await batch.commit();

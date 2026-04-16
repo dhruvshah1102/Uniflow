@@ -9,6 +9,7 @@ import '../../models/assignment.dart';
 import '../../models/submission_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/student_dashboard_service.dart';
+import '../../widgets/common/loading_skeleton_page.dart';
 
 class AssignmentDetailsScreen extends StatefulWidget {
   final AssignmentModel assignment;
@@ -133,7 +134,7 @@ class _AssignmentDetailsScreenState extends State<AssignmentDetailsScreen> {
         surfaceTintColor: Colors.transparent,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingSkeletonPage(cardCount: 2, showHeader: false)
           : RefreshIndicator(
               onRefresh: _loadSubmission,
               child: ListView(

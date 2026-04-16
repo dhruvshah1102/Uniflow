@@ -24,7 +24,7 @@ class QuizSubmissionModel {
       studentId: map['student_id'] ?? '',
       answers: map['answers'] != null ? Map<String, String>.from(map['answers']) : {},
       score: map['score']?.toInt() ?? 0,
-      submittedAt: map['submitted_at'] ?? Timestamp.now(),
+      submittedAt: _timestamp(map['submitted_at']) ?? Timestamp.now(),
     );
   }
 
@@ -37,4 +37,14 @@ class QuizSubmissionModel {
       'submitted_at': submittedAt,
     };
   }
+}
+
+Timestamp? _timestamp(dynamic value) {
+  if (value == null) return null;
+  if (value is Timestamp) return value;
+  if (value is DateTime) return Timestamp.fromDate(value);
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? null : Timestamp.fromDate(parsed);
 }

@@ -21,6 +21,7 @@ import '../models/study_material.dart';
 import '../models/notification_model.dart';
 import 'storage_service.dart';
 import 'admin_module_service.dart';
+import 'local_cache_service.dart';
 
 class FacultyDashboardData {
   final List<CourseModel> courses;
@@ -100,11 +101,29 @@ class FacultyModuleService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final StorageService _storage = StorageService.instance;
   final Random _random = Random();
+  final Map<String, _CachedFacultyDashboard> _dashboardCache = {};
+  static const Duration _dashboardCacheTtl = Duration(seconds: 20);
+  static const Duration _diskCacheTtl = Duration(hours: 1);
 
   Future<FacultyDashboardData> loadDashboard({
     required String firebaseUid,
     required String userDocId,
+    bool forceRefresh = false,
   }) async {
+    final cacheKey = _cacheKey(firebaseUid, userDocId);
+    if (!forceRefresh) {
+      final diskCached = await _readCachedDashboard(cacheKey);
+      if (diskCached != null) {
+        return diskCached;
+      }
+
+      final cached = _dashboardCache[cacheKey];
+      final fetchedAt = DateTime.now();
+      if (cached != null && fetchedAt.difference(cached.fetchedAt) < _dashboardCacheTtl) {
+        return cached.data;
+      }
+    }
+
     await AdminModuleService.instance.ensureCourseCatalog();
     final facultyIds = _uniqueIds([firebaseUid, userDocId]);
     final courses = await _fetchCoursesForFaculty(facultyIds);
@@ -131,16 +150,16 @@ class FacultyModuleService {
     assignments.sort((a, b) => a.dueDate.compareTo(b.dueDate));
     announcements.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    final now = DateTime.now();
+    final cacheTime = DateTime.now();
     final dueSoonCount = assignments
         .where(
           (assignment) => assignment.dueDate.toDate().isBefore(
-            now.add(const Duration(days: 3)),
+            cacheTime.add(const Duration(days: 3)),
           ),
         )
         .length;
 
-    return FacultyDashboardData(
+    final data = FacultyDashboardData(
       courses: courses,
       studentCountByCourse: studentCountByCourse,
       assignments: assignments,
@@ -149,166 +168,129 @@ class FacultyModuleService {
       announcements: announcements,
       pendingTasks: dueSoonCount + courses.length,
     );
+
+    _dashboardCache[cacheKey] = _CachedFacultyDashboard(
+      data: data,
+      fetchedAt: DateTime.now(),
+    );
+    await _writeCachedDashboard(cacheKey, data);
+    return data;
   }
 
   Stream<FacultyDashboardData> watchDashboard({
     required String firebaseUid,
     required String userDocId,
+    bool forceRefresh = false,
   }) {
-    final controller = StreamController<FacultyDashboardData>.broadcast();
-    final fixedSubscriptions = <StreamSubscription<dynamic>>[];
-    final courseSubscriptions = <StreamSubscription<dynamic>>[];
-    var closed = false;
-    var currentCourseIds = <String>{};
-    var refreshInFlight = false;
-    var refreshQueued = false;
-    Timer? debounceTimer;
+    return Stream<FacultyDashboardData>.fromFuture(
+      loadDashboard(
+        firebaseUid: firebaseUid,
+        userDocId: userDocId,
+        forceRefresh: forceRefresh,
+      ),
+    );
+  }
 
-    Future<void> emitSnapshot() async {
-      if (closed || controller.isClosed) return;
-      try {
-        final data = await loadDashboard(
-          firebaseUid: firebaseUid,
-          userDocId: userDocId,
-        );
-        if (!closed && !controller.isClosed) {
-          controller.add(data);
-        }
-      } catch (error, stackTrace) {
-        if (!closed && !controller.isClosed) {
-          controller.addError(error, stackTrace);
-        }
+  String _cacheKey(String firebaseUid, String userDocId) {
+    return '${firebaseUid.trim()}|${userDocId.trim()}';
+  }
+
+  Future<FacultyDashboardData?> _readCachedDashboard(String cacheKey) async {
+    final map = await LocalCacheService.instance.readJson(cacheKey);
+    if (map == null) return null;
+    try {
+      final cachedAt = _timestamp(map['cachedAt']);
+      if (cachedAt != null && DateTime.now().difference(cachedAt.toDate()) > _diskCacheTtl) {
+        return null;
       }
+      final payload = _map(map['payload']);
+      return _facultyDashboardFromMap(payload);
+    } catch (_) {
+      return null;
     }
+  }
 
-    void scheduleEmitSnapshot() {
-      if (closed || controller.isClosed) return;
-      refreshQueued = true;
-      debounceTimer?.cancel();
-      debounceTimer = Timer(const Duration(milliseconds: 120), () {
-        if (closed || controller.isClosed) return;
-        if (refreshInFlight) {
-          refreshQueued = true;
-          return;
-        }
+  Future<void> _writeCachedDashboard(String cacheKey, FacultyDashboardData data) async {
+    await LocalCacheService.instance.writeJson(cacheKey, {
+      'cachedAt': DateTime.now().toIso8601String(),
+      'payload': _facultyDashboardToMap(data),
+    });
+  }
 
-        refreshQueued = false;
-        refreshInFlight = true;
-        unawaited(() async {
-          try {
-            await emitSnapshot();
-          } finally {
-            refreshInFlight = false;
-            if (!closed && !controller.isClosed && refreshQueued) {
-              scheduleEmitSnapshot();
-            }
-          }
-        }());
-      });
-    }
-
-    Future<void> resetCourseListeners(Iterable<String> courseIds) async {
-      final nextCourseIds = courseIds
-          .where((id) => id.trim().isNotEmpty)
-          .map((id) => id.trim())
-          .toSet();
-      if (nextCourseIds.length == currentCourseIds.length &&
-          nextCourseIds.difference(currentCourseIds).isEmpty) {
-        return;
-      }
-
-      currentCourseIds = nextCourseIds;
-      for (final sub in courseSubscriptions) {
-        await sub.cancel();
-      }
-      courseSubscriptions.clear();
-
-      if (currentCourseIds.isEmpty) return;
-
-      final courseIdList = currentCourseIds.toList();
-      for (final batch in _chunk(courseIdList, 10)) {
-        courseSubscriptions.add(
-          _db
-              .collection('courses')
-              .where(FieldPath.documentId, whereIn: batch)
-              .snapshots()
-              .listen((_) => scheduleEmitSnapshot()),
-        );
-        courseSubscriptions.add(
-          _db
-              .collection('assignments')
-              .where('courseId', whereIn: batch)
-              .snapshots()
-              .listen((_) => scheduleEmitSnapshot()),
-        );
-        courseSubscriptions.add(
-          _db
-              .collection('quizzes')
-              .where('course_id', whereIn: batch)
-              .snapshots()
-              .listen((_) => scheduleEmitSnapshot()),
-        );
-        courseSubscriptions.add(
-          _db
-              .collection('materials')
-              .where('courseId', whereIn: batch)
-              .snapshots()
-              .listen((_) => scheduleEmitSnapshot()),
-        );
-        courseSubscriptions.add(
-          _db
-              .collection('enrollments')
-              .where('courseId', whereIn: batch)
-              .snapshots()
-              .listen((_) => scheduleEmitSnapshot()),
-        );
-      }
-    }
-
-    void startFixedListeners() {
-      final facultyIds = _uniqueIds([firebaseUid, userDocId]);
-      if (facultyIds.isEmpty) return;
-
-      for (final batch in _chunk(facultyIds, 10)) {
-        fixedSubscriptions.add(
-          _db
-              .collection('courses')
-              .where('facultyId', whereIn: batch)
-              .snapshots()
-              .listen((snapshot) async {
-                final courseIds = snapshot.docs.map((doc) => doc.id).toSet();
-                await resetCourseListeners(courseIds);
-                scheduleEmitSnapshot();
-              }),
-        );
-        fixedSubscriptions.add(
-          _db
-              .collection('notifications')
-              .where('createdBy', whereIn: batch)
-              .snapshots()
-              .listen((_) => scheduleEmitSnapshot()),
-        );
-      }
-    }
-
-    controller.onListen = () {
-      startFixedListeners();
-      unawaited(emitSnapshot());
+  Map<String, dynamic> _facultyDashboardToMap(FacultyDashboardData data) {
+    return {
+      'courses': data.courses.map((course) => course.toMap()).toList(),
+      'studentCountByCourse': data.studentCountByCourse,
+      'assignments': data.assignments.map((assignment) => assignment.toMap()).toList(),
+      'quizzes': data.quizzes.map((quiz) => quiz.toMap()).toList(),
+      'materials': data.materials.map((material) => material.toMap()).toList(),
+      'announcements': data.announcements.map((notification) => notification.toMap()).toList(),
+      'pendingTasks': data.pendingTasks,
     };
+  }
 
-    controller.onCancel = () {
-      closed = true;
-      for (final sub in fixedSubscriptions) {
-        unawaited(sub.cancel());
-      }
-      for (final sub in courseSubscriptions) {
-        unawaited(sub.cancel());
-      }
-      debounceTimer?.cancel();
-      unawaited(controller.close());
-    };
+  FacultyDashboardData _facultyDashboardFromMap(Map<String, dynamic> map) {
+    return FacultyDashboardData(
+      courses: _list(map['courses'])
+          .map((item) => CourseModel.fromMap(_map(item), _string(_map(item)['courseId']) ?? ''))
+          .toList(),
+      studentCountByCourse: _stringIntMap(map['studentCountByCourse']),
+      assignments: _list(map['assignments'])
+          .map((item) => AssignmentModel.fromMap(_map(item), _string(_map(item)['assignmentId']) ?? ''))
+          .toList(),
+      quizzes: _list(map['quizzes'])
+          .map((item) => QuizModel.fromMap(_map(item), _string(_map(item)['quizId']) ?? ''))
+          .toList(),
+      materials: _list(map['materials'])
+          .map((item) => StudyMaterialModel.fromMap(_map(item), _string(_map(item)['materialId']) ?? ''))
+          .toList(),
+      announcements: _list(map['announcements'])
+          .map((item) => NotificationModel.fromMap(_map(item), _string(_map(item)['notificationId']) ?? ''))
+          .toList(),
+      pendingTasks: _int(map['pendingTasks']) ?? 0,
+    );
+  }
 
-    return controller.stream;
+  Map<String, dynamic> _map(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) {
+      return value.map((key, entry) => MapEntry(key.toString(), entry));
+    }
+    return <String, dynamic>{};
+  }
+
+  List<dynamic> _list(dynamic value) {
+    if (value is List) return value;
+    return const <dynamic>[];
+  }
+
+  String? _string(dynamic value) {
+    if (value == null) return null;
+    return value.toString().trim();
+  }
+
+  int? _int(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  Map<String, int> _stringIntMap(dynamic value) {
+    if (value is Map) {
+      return value.map((key, entry) => MapEntry(key.toString(), _int(entry) ?? 0));
+    }
+    return <String, int>{};
+  }
+
+  Timestamp? _timestamp(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value;
+    if (value is DateTime) return Timestamp.fromDate(value);
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+    final parsed = DateTime.tryParse(text);
+    return parsed == null ? null : Timestamp.fromDate(parsed);
   }
 
   Future<List<CourseModel>> _fetchCoursesForFaculty(
@@ -1081,4 +1063,14 @@ class FacultyModuleService {
       throw Exception('Attendance export failed: ${e.toString()}');
     }
   }
+}
+
+class _CachedFacultyDashboard {
+  final FacultyDashboardData data;
+  final DateTime fetchedAt;
+
+  const _CachedFacultyDashboard({
+    required this.data,
+    required this.fetchedAt,
+  });
 }

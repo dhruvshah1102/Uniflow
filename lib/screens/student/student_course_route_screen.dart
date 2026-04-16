@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/student_dashboard_data.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/student_dashboard_service.dart';
+import '../../widgets/common/loading_skeleton_page.dart';
 import 'course_detail_screen.dart';
 
 class StudentCourseRouteScreen extends StatelessWidget {
@@ -26,7 +27,7 @@ class StudentCourseRouteScreen extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (auth.currentUser == null || firebaseUser == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: LoadingSkeletonPage(cardCount: 3));
     }
 
     final service = StudentDashboardService.instance;
@@ -38,7 +39,7 @@ class StudentCourseRouteScreen extends StatelessWidget {
       ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(body: LoadingSkeletonPage(cardCount: 4));
         }
         if (snapshot.hasError) {
           return Scaffold(
