@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/admin_model.dart';
 import '../models/faculty_model.dart';
@@ -123,6 +124,11 @@ class AuthProvider extends ChangeNotifier {
       }
 
       final normalizedEmail = email.trim().toLowerCase();
+      final isDemoAccount = <String>{
+        'student1@iiitn.ac.in',
+        'faculty1@iiitn.ac.in',
+        'admin@iiitn.ac.in',
+      }.contains(normalizedEmail);
 
       if (email.trim().toLowerCase() == 'user@iiitn.ac.in') {
         await _authService.purgeMistakenStudentAccount(uid: uid, email: email);
@@ -132,7 +138,8 @@ class AuthProvider extends ChangeNotifier {
         );
       }
 
-      if (roleHint != null &&
+      if (!isDemoAccount &&
+          roleHint != null &&
           (currentUser == null || currentUser!.role.trim().isEmpty)) {
         await _authService.ensureUserRecord(
           uid: uid,
@@ -145,7 +152,8 @@ class AuthProvider extends ChangeNotifier {
       final normalizedRole = (currentUser?.role ?? roleHint ?? '')
           .trim()
           .toLowerCase();
-      if (normalizedRole == 'student' || normalizedRole == 'faculty') {
+      if (!isDemoAccount &&
+          (normalizedRole == 'student' || normalizedRole == 'faculty')) {
         await _authService.cleanupLegacyDemoData(
           uid: uid,
           role: normalizedRole,
@@ -153,7 +161,7 @@ class AuthProvider extends ChangeNotifier {
         await _fetchUserData(uid);
       }
 
-      if (normalizedEmail == 'student1@iiitn.ac.in') {
+      if (!isDemoAccount && normalizedEmail == 'student1@iiitn.ac.in') {
         await _authService.ensureDemoStudentSemesterFive(
           uid: uid,
           email: email,
@@ -161,13 +169,32 @@ class AuthProvider extends ChangeNotifier {
         await _fetchUserData(uid);
       }
 
-      if (normalizedRole == 'faculty' &&
+      if (!isDemoAccount &&
+          normalizedRole == 'faculty' &&
           normalizedEmail == 'faculty1@iiitn.ac.in') {
         await _authService.ensureFacultyDemoData(uid: uid, email: email);
         await _fetchUserData(uid);
       }
 
       await _fetchUserData(uid);
+
+      if (isDemoAccount && currentUser == null) {
+        final fallbackRole = roleHint ?? 'student';
+        currentUser = UserModel(
+          id: uid,
+          name: normalizedEmail.split('@').first,
+          email: normalizedEmail,
+          role: fallbackRole,
+          department: '',
+          semester: null,
+          division: 'A',
+          uidFirebase: uid,
+          fcmToken: '',
+          createdAt: Timestamp.now(),
+        );
+        await PushNotificationService.instance.bindUser(currentUser!);
+      }
+
       return currentUser;
     } catch (e) {
       error = 'Invalid email or password';

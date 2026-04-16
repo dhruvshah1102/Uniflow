@@ -46,9 +46,24 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  LoginRole? _roleForEmail(String email) {
+    switch (email.trim().toLowerCase()) {
+      case 'admin@iiitn.ac.in':
+        return LoginRole.admin;
+      case 'faculty1@iiitn.ac.in':
+        return LoginRole.faculty;
+      case 'student1@iiitn.ac.in':
+        return LoginRole.student;
+      default:
+        return null;
+    }
+  }
+
   Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final demoRole = _roleForEmail(email);
+    final roleToUse = demoRole ?? _selectedRole;
 
     if (email.isEmpty || password.isEmpty) {
       setState(() {
@@ -66,11 +81,15 @@ class _LoginScreenState extends State<LoginScreen> {
       final UserModel? user = await context.read<AuthProvider>().login(
         email,
         password,
-        roleHint: _selectedRole.value,
+        roleHint: roleToUse.value,
       );
-      final actualRole = user?.role.trim().toLowerCase();
+      var actualRole = user?.role.trim().toLowerCase();
+      if ((actualRole == null || actualRole.isEmpty) &&
+          _roleForEmail(email) != null) {
+        actualRole = roleToUse.value;
+      }
 
-      if (actualRole != _selectedRole.value) {
+      if (_roleForEmail(email) == null && actualRole != roleToUse.value) {
         await context.read<AuthProvider>().logout();
         if (!mounted) return;
         setState(() {

@@ -71,5 +71,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'uniflow2-63ee5.firebasestorage.app',
     iosBundleId: 'com.example.uniflow',
   );
-
 }

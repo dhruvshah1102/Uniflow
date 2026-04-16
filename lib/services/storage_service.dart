@@ -1,6 +1,7 @@
-import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 class SupabaseStorageConfig {
   final String url;
@@ -20,11 +21,25 @@ class SupabaseStorageConfig {
     String bucketName = 'study-materials',
   }) {
     return SupabaseStorageConfig(
-      url: const String.fromEnvironment('SUPABASE_URL', defaultValue: ''),
+      url: const String.fromEnvironment(
+        'SUPABASE_URL',
+        defaultValue: 'https://eudymloxhsvvabxakwfg.supabase.co',
+      ),
       anonKey: const String.fromEnvironment(
         'SUPABASE_ANON_KEY',
-        defaultValue: '',
+        defaultValue:
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1ZHltbG94aHN2dmFieGFrd2ZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDgxMTksImV4cCI6MjA5MTU4NDExOX0.U4OzvRlZsn5NTYk8x_PJDqc0lRaZobGIpFEMiUEGa4s',
       ),
+      bucketName: bucketName,
+    );
+  }
+
+  factory SupabaseStorageConfig.fromJson(Map<String, dynamic> json, {
+    String bucketName = 'study-materials',
+  }) {
+    return SupabaseStorageConfig(
+      url: (json['SUPABASE_URL'] ?? '').toString().trim(),
+      anonKey: (json['SUPABASE_ANON_KEY'] ?? '').toString().trim(),
       bucketName: bucketName,
     );
   }
@@ -50,6 +65,7 @@ class StorageService {
   StorageService._();
 
   static final StorageService instance = StorageService._();
+  SupabaseStorageConfig? _cachedConfig;
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -59,7 +75,32 @@ class StorageService {
     ),
   );
 
-  SupabaseStorageConfig get _config => SupabaseStorageConfig.fromEnvironment();
+  Future<SupabaseStorageConfig> get _config async {
+    final cached = _cachedConfig;
+    if (cached != null) return cached;
+
+    final envConfig = SupabaseStorageConfig.fromEnvironment();
+    if (envConfig.isConfigured) {
+      _cachedConfig = envConfig;
+      return envConfig;
+    }
+
+    try {
+      final raw = await rootBundle.loadString('env.json');
+      final parsed = jsonDecode(raw);
+      if (parsed is Map<String, dynamic>) {
+        final jsonConfig = SupabaseStorageConfig.fromJson(parsed);
+        if (jsonConfig.isConfigured) {
+          _cachedConfig = jsonConfig;
+          return jsonConfig;
+        }
+      }
+    } catch (_) {
+      // Fall through to the error below.
+    }
+
+    return envConfig;
+  }
 
   Future<StudyMaterialUploadResult> uploadStudyMaterial({
     required Uint8List bytes,
@@ -68,7 +109,7 @@ class StorageService {
     required String facultyId,
     String? contentType,
   }) async {
-    final config = _config;
+    final config = await _config;
     if (!config.isConfigured) {
       throw Exception(
         'Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY before uploading files.',

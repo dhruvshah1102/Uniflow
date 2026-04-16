@@ -126,7 +126,6 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
         forceRefresh: true,
       );
     });
-    await _stream?.first;
   }
 
   @override

@@ -1,1 +1,29 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"uniflow2-63ee5","appId":"1:256211254063:android:4c442fab2739776b2affda","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"uniflow2-63ee5","configurations":{"android":"1:256211254063:android:4c442fab2739776b2affda","ios":"1:256211254063:ios:ccf2e63039d665e42affda","web":"1:256211254063:web:a2fcf60d370202992affda"}}}}},"functions":{"source":"functions"}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "uniflow2-63ee5",
+          "appId": "1:256211254063:android:4c442fab2739776b2affda",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "uniflow2-63ee5",
+          "configurations": {
+            "android": "1:256211254063:android:4c442fab2739776b2affda",
+            "ios": "1:256211254063:ios:ccf2e63039d665e42affda",
+            "web": "1:256211254063:web:a2fcf60d370202992affda"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": {
+    "source": "functions"
+  }
+}

@@ -7,7 +7,6 @@ import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -166,7 +165,7 @@ class FacultyModuleService {
       quizzes: quizzes,
       materials: materials,
       announcements: announcements,
-      pendingTasks: dueSoonCount + courses.length,
+      pendingTasks: dueSoonCount,
     );
 
     _dashboardCache[cacheKey] = _CachedFacultyDashboard(
@@ -1021,26 +1020,20 @@ class FacultyModuleService {
   }
 
   Future<Directory> _resolveAttendanceDirectory() async {
-    if (!Platform.isAndroid) {
-      return getApplicationDocumentsDirectory();
+    if (Platform.isAndroid) {
+      final permission = await Permission.storage.request();
+      if (permission.isPermanentlyDenied) {
+        await openAppSettings();
+      }
     }
 
-    final permission = await Permission.storage.request();
-    if (permission.isPermanentlyDenied) {
-      await openAppSettings();
+    final directory = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}uniflow_exports',
+    );
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
     }
-
-    final downloadDirs = await getExternalStorageDirectories(type: StorageDirectory.downloads);
-    if (downloadDirs != null && downloadDirs.isNotEmpty) {
-      return downloadDirs.first;
-    }
-
-    final external = await getExternalStorageDirectory();
-    if (external != null) {
-      return external;
-    }
-
-    return getApplicationDocumentsDirectory();
+    return directory;
   }
 
   Future<String> _saveAttendanceExcelToDownloads({
