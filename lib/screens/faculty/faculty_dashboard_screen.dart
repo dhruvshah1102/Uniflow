@@ -186,10 +186,7 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: _reload,
-            icon: const Icon(Icons.notifications_none_outlined),
-          ),
+          IconButton(onPressed: _reload, icon: const Icon(Icons.refresh)),
           IconButton(
             onPressed: () => auth.logout(),
             icon: const Icon(Icons.logout_outlined),
@@ -323,8 +320,10 @@ class _FacultyDashboardScreenState extends State<FacultyDashboardScreen> {
           data: data,
           facultyName: userName,
           onOpenAttendance: () => setState(() => _tab = _FacultyTab.attendance),
-          onOpenAssignments: () => setState(() => _tab = _FacultyTab.assignments),
-          onOpenNotifications: () => setState(() => _tab = _FacultyTab.notifications),
+          onOpenAssignments: () =>
+              setState(() => _tab = _FacultyTab.assignments),
+          onOpenNotifications: () =>
+              setState(() => _tab = _FacultyTab.notifications),
         );
       case _FacultyTab.courses:
         return _FacultyCoursesTab(data: data, service: _service);
@@ -1040,12 +1039,16 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
 
   Future<void> _downloadExcel() async {
     if (_selectedCourseId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a course first.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a course first.')),
+      );
       return;
     }
     setState(() => _submitting = true);
     try {
-      final courseCode = widget.data.courses.firstWhere((c) => c.courseId == _selectedCourseId).code;
+      final courseCode = widget.data.courses
+          .firstWhere((c) => c.courseId == _selectedCourseId)
+          .code;
       final savedPath = await widget.service.generateAttendanceExcel(
         courseId: _selectedCourseId!,
         courseCode: courseCode,
@@ -1056,7 +1059,9 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -1209,7 +1214,10 @@ class _FacultyAttendanceTabState extends State<_FacultyAttendanceTab> {
               ),
               IconButton(
                 onPressed: _submitting ? null : _downloadExcel,
-                icon: const Icon(Icons.download_rounded, color: AppColors.primary),
+                icon: const Icon(
+                  Icons.download_rounded,
+                  color: AppColors.primary,
+                ),
                 tooltip: 'Download Attendance Excel',
               ),
               TextButton(
@@ -1673,9 +1681,9 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
     if (uploaded == true) {
       await widget.onRefreshParent();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Study material uploaded.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Study material uploaded.')));
     }
   }
 
@@ -1841,9 +1849,7 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
                       child: TextField(
                         controller: _assignmentMarksCtrl,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Marks',
-                        ),
+                        decoration: const InputDecoration(labelText: 'Marks'),
                       ),
                     ),
                   ],
@@ -1932,71 +1938,73 @@ class _FacultyAssignmentsTabState extends State<_FacultyAssignmentsTab> {
             child: InkWell(
               borderRadius: BorderRadius.circular(22),
               onTap: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => AssignmentSubmissionsScreen(
-                    assignment: assignment,
-                    courseCode: assignment.courseId,
-                    totalStudents: 10,
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => AssignmentSubmissionsScreen(
+                      assignment: assignment,
+                      courseCode: assignment.courseId,
+                      totalStudents: 10,
+                    ),
                   ),
-                ));
+                );
               },
               child: _GlassCard(
                 accent: AppColors.primaryDark,
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          assignment.title,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.ink900,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            assignment.title,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.ink900,
+                            ),
                           ),
                         ),
-                      ),
-                      Text(
-                        DateFormat(
-                          'dd MMM, yyyy',
-                        ).format(assignment.dueDate.toDate()),
-                        style: const TextStyle(
-                          color: AppColors.danger,
-                          fontWeight: FontWeight.w700,
+                        Text(
+                          DateFormat(
+                            'dd MMM, yyyy',
+                          ).format(assignment.dueDate.toDate()),
+                          style: const TextStyle(
+                            color: AppColors.danger,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Course: ${assignment.courseId}',
-                    style: const TextStyle(color: AppColors.ink700),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.verified_outlined,
-                        size: 16,
-                        color: Color(0xFF01695B),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        '85% Participation',
-                        style: TextStyle(color: AppColors.ink700),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text('Edit Requirements'),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Course: ${assignment.courseId}',
+                      style: const TextStyle(color: AppColors.ink700),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_outlined,
+                          size: 16,
+                          color: Color(0xFF01695B),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          '85% Participation',
+                          style: TextStyle(color: AppColors.ink700),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {},
+                          child: const Text('Edit Requirements'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
             ),
           ),
         ),
@@ -2497,7 +2505,9 @@ class _FacultyProfileTab extends StatelessWidget {
                 style: const TextStyle(color: AppColors.ink700, height: 1.4),
               ),
               const SizedBox(height: 12),
-              if (courses.where((course) => course.semesterNumber == 5).isNotEmpty)
+              if (courses
+                  .where((course) => course.semesterNumber == 5)
+                  .isNotEmpty)
                 ...courses
                     .where((course) => course.semesterNumber == 5)
                     .map(
@@ -2522,7 +2532,12 @@ class _FacultyProfileTab extends StatelessWidget {
                                 alignment: Alignment.center,
                                 child: Text(
                                   course.code.isNotEmpty
-                                      ? course.code.substring(0, course.code.length >= 2 ? 2 : course.code.length)
+                                      ? course.code.substring(
+                                          0,
+                                          course.code.length >= 2
+                                              ? 2
+                                              : course.code.length,
+                                        )
                                       : '--',
                                   style: const TextStyle(
                                     color: Colors.white,

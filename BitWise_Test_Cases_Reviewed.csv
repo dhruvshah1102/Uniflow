@@ -1,0 +1,363 @@
+﻿ID,Module,Test Case,Input,Expected Output,Actual Output,Result
+AUTH-001,Authentication,UI,Launch App to Login,"Email, Password, Login button visible",Loaded perfectly,Pass
+AUTH-002,Authentication,UI,Check logo and header,"Logo is centered, text must be centered","Logo is centered, text is centered",Pass
+AUTH-003,Authentication,UX,Tap Email field,Keyboard opens with @ symbol,Keyboard opens with @ symbol,Pass
+AUTH-004,Authentication,UX,Tap Password field,Alphanumeric keyboard opens,Keyboard opened correctly.,Pass
+AUTH-005,Authentication,UI,Type in password field,Characters are hidden as bullets,Text masked immediately.,Pass
+AUTH-006,Authentication,Functionality,Click 'eye' icon,Password unmasks,Unmasked successfully.,Pass
+AUTH-007,Authentication,Functionality,Click 'eye' icon again,Password masks,Masked successfully.,Pass
+AUTH-008,Authentication,Validation,Submit empty form,Error: 'Please enter both email and password',Toast message appeared correctly.,Pass
+AUTH-009,Authentication,Validation,"Email: 'admin', Pass: '1234'",Error: 'Invalid email or password',Toast message appeared correctly.,Pass
+AUTH-010,Authentication,Validation,"Email: 'test@uniflow', Pass: 'pass'",Error: 'Invalid email or password',Toast message appeared correctly.,Pass
+AUTH-011,Authentication,Validation,"Email: '@uniflow.com', Pass: 'pass'",Error: 'Invalid email or password',Toast message appeared correctly.,Pass
+AUTH-012,Authentication,Functionality,"Valid Email, Empty Pass",Error: 'Please enter both email and password',Toast message appeared correctly.,Pass
+AUTH-013,Authentication,Validation,"Email: 'user@uniflow.com ', Pass: 'test'",Trailing space trimmed automatically,"Trimming worked, login proceeded.",Pass
+AUTH-014,Authentication,Validation,"Email: ' user@uniflow.com', Pass: 'test'",Leading space trimmed automatically,Trimming worked.,Pass
+AUTH-015,Authentication,Logic,Unregistered Email,Error: 'Invalid email or password',Toast message appeared correctly.,Pass
+AUTH-016,Authentication,Logic,"Correct Email, Wrong Pass",Error: 'Invalid email or password',Toast message appeared correctly.,Pass
+AUTH-017,Authentication,Security,"Email: 'student@uniflow.in', Pass: 'OR 1=1'","SQLi blocked, login fails",Sanitized. Did not crash.,Pass
+AUTH-018,Authentication,Security,Email: '<script>alert(1)</script>',"XSS blocked, invalid format",Failed validation early.,Pass
+AUTH-019,Authentication,Positive,Valid student credentials,"Login succeeds, navigates to Dashboard",Logged in successfully.,Pass
+AUTH-022,Authentication,Logic,Spam click Login button 10 times,Only 1 API call sent,Button disabled itself on first click.,Pass
+AUTH-023,Authentication,UI,Check loading state,Spinner appears on button click,Small circular spinner replaced button text.,Pass
+AUTH-024,Authentication,Logic,Case insensitivity on Email,Type 'STUDENT@iiitn.ac.in',Toast message appeared correctly.,Pass
+AUTH-025,Authentication,Logic,Case sensitivity on Password,Type wrong case for password,Toast message appeared correctly.,Pass
+AUTH-026,Authentication,Session,"Login, press OS Home, reopen app",Still on Dashboard,Session maintained perfectly.,Pass
+AUTH-027,Authentication,Session,"Login, swipe kill app, reopen",Auto-route to Dashboard,Bypassed login screen via saved token.,Pass
+AUTH-028,Authentication,Session,Press hardware back button from Dashboard,"App minimizes, does not return to login",App closed as expected.,Pass
+AUTH-029,Authentication,Navigation,Click 'Forgot Password',Opens Password Reset screen,Nothing yet,Fail
+AUTH-030,Authentication,Navigation,Click 'Sign Up',Opens Registration screen,Navigated properly.,Pass
+AUTH-031,Authentication,UX,Press 'Done' on keyboard while in Password,Triggers login submission,Keyboard dismissed but didn't submit form.,Fail
+AUTH-032,Authentication,Logic,Paste email into field,Pasted text is accepted,Text pasted and validated.,Pass
+AUTH-033,Authentication,Security,Paste password into field,Pasted text is masked,Text pasted and masked instantly.,Pass
+AUTH-034,Authentication,Security,Copy from password field,OS prevents copying,Could not select text to copy.,Pass
+AUTH-035,Authentication,UX,Screen rotation during typing,Text stays in fields,"Activity restarted, text wiped out.",Fail
+AUTH-036,Authentication,Logic,Email length > 100 chars,Handled gracefully,Input truncated at 50 chars.,Pass
+AUTH-037,Authentication,Performance,Login on 3G throttle,Handles slow network gracefully,Spinner spun for 15s then timed out cleanly.,Pass
+AUTH-038,Authentication,Logic,Lockout policy (if applicable),5 wrong attempts locks account,Account locked for 5 minutes.,Pass
+AUTH-039,Authentication,Logic,Login with disabled account,Error: 'Account deactivated',Showed 'Contact Administrator'.,Pass
+AUTH-040,Authentication,Logic,Login with unverified email,Error: 'Please verify email',Logged in anyway. Verification bypass bug.,Fail
+AUTH-041,Authentication,UX,Keyboard blocks Login button,UI scrolls up to keep button visible,Button was hidden behind keyboard on 5-inch device.,Fail
+AUTH-042,Authentication,UI,Dark Mode toggle,"Screen colors invert, text readable",Text in email field became white on white background.,Fail
+AUTH-043,Authentication,UX,Change OS font size to Huge,UI scales without overlapping,"Layout broke, 'Forgot Password' pushed off screen.",Fail
+AUTH-044,Authentication,Security,Clear App Data in Android settings,Removes stored tokens,"Opened app, asked to login again.",Pass
+AUTH-045,Authentication,Security,Check logs via Android Studio,Passwords should not be printed,Logcat showed password in plaintext during API call.,Fail
+AUTH-046,Authentication,Logic,Concurrent logins,"Login on Phone A, then Phone B",Phone A was forced out when Phone B logged in.,Pass
+AUTH-047,Authentication,Network,Drop network exactly during API response,Graceful error handling,App threw JSON parsing error on screen.,Fail
+AUTH-048,Authentication,Logic,Email with subdomain (student@cs.uniflow.in),Accepted valid format,Accepted correctly.,Pass
+AUTH-049,Authentication,Logic,Email with plus addressing (test+1@uniflow.in),Accepted valid format,Accepted correctly.,Pass
+AUTH-051,Authentication,UI,Error message clears on typing,Red text disappears when user edits field,Error text stayed until next submit click.,Fail
+AUTH-052,Authentication,Logic,Password > 50 characters,Does not crash,Accepted and processed safely.,Pass
+AUTH-053,Authentication,Logic,Special characters in password,"Accepts valid specials (@, #, etc.)",Logged in successfully.,Pass
+AUTH-054,Authentication,Validation,Non-ASCII chars in email,Error: Invalid format,"Caught invalid characters (e.g., emojis).",Pass
+AUTH-063,Authentication,Validation,Trailing space in password,Rejects (do not trim passwords),Rejected 'Valid123 ' as wrong password. Good.,Pass
+AUTH-064,Authentication,Validation,Leading space in password,Rejects,Rejected correctly.,Pass
+AUTH-065,Authentication,UI,Check field focus on load,Email field auto-focused,No field was auto-focused.,Fail
+AUTH-067,Authentication,UX,TalkBack/Accessibility,Fields read aloud correctly,"TalkBack read 'Edit box, Email'.",Pass
+AUTH-068,Authentication,Logic,SQL wildcard in Email: '%',Sanitized,"Treated as string, threw format error.",Pass
+AUTH-069,Authentication,Network,DNS failure simulation,Shows 'Network Error',Showed generic connection error.,Pass
+AUTH-070,Authentication,UI,Click outside keyboard,Keyboard dismisses,Keyboard closed on tap outside.,Pass
+AUTH-071,Authentication,State,App paused by phone call during login,Resumes correctly,Resumed with form intact.,Pass
+AUTH-072,Authentication,Logic,Submit via hardware Enter key (Bluetooth keyboard),Form submits,Submitted correctly.,Pass
+AUTH-075,Authentication,End-to-End,Complete happy path login,Works flawlessly under 2s,Completed in 1.1s.,Pass
+REG-001,Registration,UI,Navigate to Sign Up screen,"Fields: Name, Email, Pass, Confirm Pass, Submit",All 4 fields and button visible.,Pass
+REG-002,Registration,UX,Check Placeholders,"Read 'Full Name', 'College Email', etc.",Placeholders are clear.,Pass
+REG-003,Registration,Validation,Submit entirely blank form,Errors on all 4 fields,4 toast messages stacked. Looks messy.,Fail
+REG-004,Registration,Validation,Name < 2 characters,Error: 'Name too short',Error showed inline.,Pass
+REG-005,Registration,Validation,Name with numbers (John123),Error: 'Name must be alphabetic',Accepted numbers in name. Bug.,Fail
+REG-006,Registration,Validation,Name with specials (John@Doe),Error: 'Invalid characters in name',Accepted special characters. Bug.,Fail
+REG-007,Registration,Validation,Name with spaces/hyphens (Mary Jane-Watson),Accepted,Accepted correctly.,Pass
+REG-008,Registration,Validation,Email: invalid domain,Error: 'Use college domain' (if restricted),Allowed gmail.com instead of uniflow.edu.in.,Fail
+REG-009,Registration,Logic,Email: Already exists in DB,Error: 'Email already registered',Showed 'Email taken' message.,Pass
+REG-010,Registration,Logic,Email: Upper case handling,Converted to lower case on submit,"Checked DB, saved as lowercase.",Pass
+REG-011,Registration,Validation,Password < 8 chars,Error: 'Min 8 characters',Showed error correctly.,Pass
+REG-012,Registration,Validation,Password lacks uppercase,Error: 'Needs uppercase letter',Accepted all lowercase password. Security risk.,Fail
+REG-013,Registration,Validation,Password lacks number,Error: 'Needs 1 number',Showed error correctly.,Pass
+REG-014,Registration,Validation,Password lacks special char,Error: 'Needs special character',Showed error correctly.,Pass
+REG-015,Registration,Logic,Confirm Password matches,Pass validation,Validation passed.,Pass
+REG-016,Registration,Logic,Confirm Password mismatch,Error: 'Passwords do not match',Error showed as soon as focus left field.,Pass
+REG-017,Registration,Security,Paste into Confirm Password,Disabled/Blocked,Was able to paste. Defeats purpose of field.,Fail
+REG-018,Registration,Functionality,Click 'eye' on Pass and Confirm Pass,Toggles visibility for both,Worked for both independently.,Pass
+REG-019,Registration,UI,Submit valid form,"Spinner appears, button disables","Button disabled, prevented double click.",Pass
+REG-020,Registration,Positive,Valid student registration,"Shows success, routes to Login",Routed to Login with success Toast.,Pass
+REG-021,Registration,Integration,Check DB for new user,"User row exists, password hashed","Found in DB, password is bcrypt hashed.",Pass
+REG-022,Registration,State,Rotate screen during input,Inputs remain,Inputs cleared on rotation.,Fail
+REG-023,Registration,Navigation,Click 'Already have an account? Login',Navigates back to Login,Navigated properly.,Pass
+REG-024,Registration,Network,Turn off WiFi mid-submit,Error: 'Network error',Crashed with SocketTimeoutException.,Fail
+REG-025,Registration,Logic,Name length > 50 chars,Truncates or errors gracefully,"UI pushed out of bounds, text cut off.",Fail
+REG-026,Registration,Logic,Email length > 100 chars,Errors gracefully,Threw 500 error from backend (DB limit hit).,Fail
+REG-027,Registration,Security,SQL Injection in Name: ' OR 1=1; DROP TABLE users; --,Sanitized,"Stored exactly as typed, did not execute.",Pass
+REG-028,Registration,Security,XSS in Name: <script>alert(1)</script>,Sanitized,Stored as text.,Pass
+REG-029,Registration,UX,Tab order via hardware keyboard,Name -> Email -> Pass -> Confirm,Order was Name -> Pass -> Email. Messed up.,Fail
+REG-030,Registration,UI,Keyboard pushes UI up,All fields remain visible,Confirm Password hidden behind keyboard.,Fail
+REG-031,Registration,UX,Error messages disappear on edit,Red text clears,Cleared when typing started.,Pass
+REG-032,Registration,Logic,Concurrent registration same email,Two phones submit same email at exact same time,"DB locked one, returned 'Already exists' to other.",Pass
+REG-033,Registration,Logic,Terms & Conditions checkbox,Must be checked to submit,No checkbox exists on UI. Requirements missed?,Fail
+REG-035,Registration,Security,Check payload via proxy,"Sent over HTTPS, not plaintext HTTP",Verified SSL.,Pass
+REG-036,Registration,Logic,Email with trailing space,Trims and validates,Trimmed automatically.,Pass
+REG-037,Registration,Logic,Password with spaces,Error: 'Spaces not allowed',Accepted password with spaces.,Fail
+REG-038,Registration,UI,Dark Mode readability,Labels readable,Labels are dark gray on black bg. Unreadable.,Fail
+REG-039,Registration,UI,Large Font size OS setting,Layout doesn't break,"Layout shifted, button overlaps text.",Fail
+REG-040,Registration,Functionality,Auto-login post registration,Routes straight to Dashboard (if required),Forced manual login instead. Check spec.,Fail
+REG-041,Registration,Network,Submit on slow 3G,Handles timeout,Threw 'Request timed out' after 30s.,Pass
+REG-042,Registration,Logic,Send OTP to email (if applicable),OTP received,Email received in 5 seconds.,Pass
+REG-043,Registration,Logic,Enter invalid OTP,Error: 'Invalid code',Showed error.,Pass
+REG-044,Registration,Logic,Enter valid OTP,Account verified,Verified and routed to Login.,Pass
+REG-045,Registration,Logic,Resend OTP,New email arrives,Arrived successfully.,Pass
+REG-046,Registration,Logic,OTP cooldown timer,Cannot spam resend,Resend button disabled with 60s countdown.,Pass
+REG-047,Registration,Logic,Register with admin email format,Blocked if reserved,Allowed me to register 'admin@uniflow.in'.,Fail
+REG-048,Registration,Logic,HTML tags in Email,Error: 'Invalid format',Rejected correctly.,Pass
+REG-049,Registration,State,App goes to background while loading,Completes task,Registered successfully in background.,Pass
+REG-050,Registration,UX,Success animation/check,Visual feedback,"Just a basic toast. Works, but could be better.",Pass
+REG-051,Registration,UX,Email field auto-capitalization,Turned off (first letter shouldn't capitalize),First letter capitalized by default keyboard.,Fail
+REG-052,Registration,UX,Name field auto-capitalization,Words capitalize automatically,"Worked, 'john doe' -> 'John Doe'.",Pass
+REG-053,Registration,Security,Clear App Cache after filling form,Form resets,Wiped correctly.,Pass
+REG-054,Registration,Validation,Double-byte characters (Unicode) in Name,"Accepted (e.g., Hindi/Marathi chars)",Stored as '????' in DB. Encoding issue.,Fail
+REG-055,Registration,Validation,Email with IP address (user@[1.1.1.1]),Rejected,Rejected.,Pass
+REG-056,Registration,Validation,Password exact 8 chars,Accepted (Boundary test),Accepted.,Pass
+REG-057,Registration,Validation,Password exact 50 chars,Accepted (Boundary test),Accepted.,Pass
+REG-058,Registration,UI,Password match real-time check,Shows green tick when matched,"No real-time feedback, only on submit.",Fail
+REG-059,Registration,UI,Click outside keyboard,Keyboard closes,Closed properly.,Pass
+REG-060,Registration,Logic,Use spaces in Confirm Password,Rejected as mismatch,Rejected correctly.,Pass
+REG-061,Registration,Navigation,Press hardware Back button,Prompts 'Discard changes?',"Exited immediately, lost all typed data.",Fail
+REG-062,Registration,UI,Button ripple effect,Visual click state,Ripple effect visible.,Pass
+REG-063,Registration,State,Receive phone call mid-registration,Form state saved,Resumed correctly.,Pass
+REG-064,Registration,Security,Check backend for rate limiting,Script sends 50 requests,Backend blocked IP after 20 attempts. 429 error.,Pass
+REG-065,Registration,UX,Accessibility/TalkBack on fields,Reads hints properly,"Read Name, Email, Pass perfectly.",Pass
+REG-066,Registration,UX,TalkBack on Error states,Reads error messages aloud,Did not read the red error text aloud.,Fail
+REG-067,Registration,Logic,Name with numbers via Copy/Paste,Validation catches it,Caught it on submit.,Pass
+REG-068,Registration,UI,Screen transition animation,Smooth slide/fade,Slid smoothly from Login.,Pass
+REG-069,Registration,Performance,Memory usage on form,Stable under 150MB,Hovered at 90MB.,Pass
+REG-071,Registration,Logic,Email format user@domain.c,"Rejected, invalid TLD length",Accepted it. Regex needs updating.,Fail
+REG-072,Registration,Logic,Valid Email domain .edu.in,Accepted,Accepted.,Pass
+REG-073,Registration,UX,Submit with hardware keyboard 'Enter',Triggers submit,Did nothing.,Fail
+REG-074,Registration,Error Handling,DB offline simulation,Graceful error,Showed 'Server unavailable'.,Pass
+REG-075,Registration,End-to-End,"Create account, Login, Verify Dashboard",All working seamlessly,Complete flow successful.,Pass
+ATT-001,Attendance,UI,Navigate to Attendance Module,"Subject wise Attendance, Present/Absent Total Statistics",Loaded perfectly. UI is clean.,Pass
+ATT-002,Attendance,UI,Check Default Date,Should default to today's date (faculty),Defaulted to today's date correctly.,Pass
+ATT-003,Attendance,UI,Check Subject List,Dropdown populates with user's enrolled subjects,Dropdown was empty on first load. Required a refresh.,Fail
+ATT-004,Attendance,Validation,Click 'Present' with no subject selected,Error: 'Please select a subject',Toast message appeared: 'Select subject first'.,Pass
+ATT-005,Attendance,Functionality,Select Subject -> Click Present,"Marks as Present, updates DB",Marked successfully.,Pass
+ATT-006,Attendance,Functionality,Select Subject -> Click Absent,"Marks as Absent, updates DB",Marked successfully.,Pass
+ATT-007,Attendance,Validation,Mark Present twice for same subject today,Error: 'Already marked for today',Button greyed out after first click. Good.,Pass
+ATT-008,Attendance,Logic,Change Absent to Present (Same Day),Updates record (if allowed by rules),Threw error: 'Contact admin to change'. Works as intended.,Pass
+ATT-009,Attendance,Boundary,Select tomorrow's date in picker,Future dates disabled or error shown,"Picker allowed future date, but API rejected it. UI needs fix.",Fail
+ATT-010,Attendance,Boundary,Select yesterday's date in picker,Allows marking (if past marking is permitted),Allowed marking for yesterday.,Pass
+ATT-011,Attendance,Logic,Select Saturday/Sunday,Error: 'Weekend marking disabled',Allowed me to mark attendance on Sunday. Bug.,Fail
+ATT-012,Attendance,Logic,Select known college holiday,"Error: 'Holiday, no classes'",Accepted attendance on a public holiday.,Fail
+ATT-013,Attendance,Edge,Spam click 'Present' 10 times,Only 1 DB entry created,Only one entry recorded. Debounce works.,Pass
+ATT-014,Attendance,UI,Button loading state,Spinner during API call,Spinner showed for 1 sec.,Pass
+ATT-015,Attendance,Network,Turn off WiFi -> Click Present,Error: 'No internet connection',Showed offline warning.,Pass
+ATT-016,Attendance,Network,Offline sync behavior,"Marks locally, syncs when online",Did not sync when WiFi turned back on. Data lost.,Fail
+ATT-017,Attendance,Navigation,Go to Dashboard Stats,Stats reflect new attendance immediately,Dashboard updated from 75% to 76%.,Pass
+ATT-018,Attendance,Logic,Verify Total Classes increment,Total classes goes up by 1,Incremented correctly.,Pass
+ATT-019,Attendance,Logic,Verify Present increment,Present count goes up by 1,Incremented correctly.,Pass
+ATT-020,Attendance,Logic,Verify Absent increment,Absent count goes up by 1,Incremented correctly.,Pass
+ATT-021,Attendance,Logic,"Percentage calculation (1 Present, 0 Absent)",Shows 100%,Showed 100%.,Pass
+ATT-022,Attendance,Logic,"Percentage calculation (1 Present, 1 Absent)",Shows 50%,Showed 50%.,Pass
+ATT-023,Attendance,Logic,"Percentage calculation (2 Present, 1 Absent)",Shows 66.67% or 67%,Showed 66.6%.,Pass
+ATT-024,Attendance,UI,Low attendance warning indicator,Turns red if < 75%,Text turned red at 74%.,Pass
+ATT-025,Attendance,Logic,Mark multiple different subjects on same day,Saves independent records,Saved 3 subjects successfully.,Pass
+ATT-026,Attendance,Security,Wait for token expiry -> Mark,Forces logout,Redirected to login.,Pass
+ATT-027,Attendance,Logic,Mark on Leap Year (Feb 29),Handled correctly,"Tested via mock server, worked perfectly.",Pass
+ATT-028,Attendance,Security,Cross-user API attack,Try to send User B's ID in payload,Backend returned 403 Forbidden. Secure.,Pass
+ATT-029,Attendance,State,Select Subject -> Background App -> Return,Subject remains selected,Subject reset to 'Select...'. Annoying UX.,Fail
+ATT-030,Attendance,State,Rotate device on Attendance screen,"Layout adjusts, data stays","Layout fine, but subject selection cleared.",Fail
+ATT-031,Attendance,Logic,Time constraint (e.g. 11 PM),Fails if outside college hours,Allowed marking at 11:30 PM. Might need restriction.,Fail
+ATT-033,Attendance,Navigation,Click 'History' tab,Loads chronological list of records,List loaded instantly.,Pass
+ATT-034,Attendance,Performance,Scroll history with 100+ records,"Smooth scrolling, lazy loading",Stuttered heavily after 50 items. Needs RecyclerView optimization.,Fail
+ATT-035,Attendance,UI,Empty History state,Shows 'No records found' image,Showed friendly empty state illustration.,Pass
+ATT-036,Attendance,Logic,Filter History by Subject,Shows only that subject,Filter worked perfectly.,Pass
+ATT-037,Attendance,Logic,Filter History by Month,Shows only that month,Filter applied correctly.,Pass
+ATT-038,Attendance,Logic,Filter yields no results,Shows 'No records for this filter',Showed correct text.,Pass
+ATT-039,Attendance,Security,SQL Injection in Subject Filter,"Sanitized, 400 Bad Request",API rejected payload.,Pass
+ATT-040,Attendance,UI,Dark Mode compatibility,Text readable on dark background,Calendar dates invisible in dark mode (black on black).,Fail
+ATT-041,Attendance,UI,Large Font OS Setting,Doesn't overlap,Mark Present' button text pushed out of bounds.,Fail
+ATT-042,Attendance,Logic,Simultaneous login marking,"Device 1 marks Present, Device 2 marks Absent",Device 2 got 'Already marked' error. Good lock.,Pass
+ATT-043,Attendance,Integration,Dashboard widget sync,Updates without manual refresh,Widget updated when returning to home.,Pass
+ATT-044,Attendance,Logic,Marking unenrolled course via API,Returns 400 error,Blocked by backend.,Pass
+ATT-045,Attendance,Boundary,Mark 15 subjects in one day,Validates realistic limits,Allowed 15. Should probably cap at 8-10 max.,Fail
+ATT-046,Attendance,Logic,Admin overrides absent to present,App reflects change,Reflected after pull-to-refresh.,Pass
+ATT-047,Attendance,UI,Pull to refresh on History,Fetches new data,Refreshed correctly.,Pass
+ATT-048,Attendance,Logic,Change device timezone to bypass date lock,Uses server UTC time,"Used server time, bypass failed. Secure.",Pass
+ATT-049,Attendance,Network,Submit on 3G throttle,Handles latency gracefully,"Spinner spun for 8s, then succeeded.",Pass
+ATT-050,Attendance,Logic,View stats for deleted subject,Handles gracefully,Stats showed 'Unknown Subject' instead of hiding it.,Fail
+ATT-051,Attendance,Security,Rapid concurrent API requests (Burp Suite),Rate limited,Blocked by 429 Too Many Requests.,Pass
+ATT-052,Attendance,UI,Calendar view - Present days,Green dot under date,Green dot rendered.,Pass
+ATT-053,Attendance,UI,Calendar view - Absent days,Red dot under date,Red dot rendered.,Pass
+ATT-054,Attendance,UI,Calendar view - Mixed day,Split/Orange dot,Showed split dot correctly.,Pass
+ATT-055,Attendance,Logic,"Logout User A, Login User B",User B does not see User A's history,Cache cleared completely on logout.,Pass
+ATT-056,Attendance,Security,Tamper with JWT token payload,Rejected by server,Server threw 401 Unauthorized.,Pass
+ATT-057,Attendance,UI,Extremely long subject name,Wraps or truncates cleanly,Wrapped to two lines cleanly.,Pass
+ATT-058,Attendance,Logic,Send boolean instead of date string to API,Type validation catches it,Caught with 400 Bad Request.,Pass
+ATT-059,Attendance,Integration,Notification trigger on Absent,Push notification sent,Received 'You missed a class' notification 5 mins later.,Pass
+ATT-060,Attendance,UI,Pie chart rendering on Stats screen,Renders slices correctly,Chart looks good.,Pass
+ATT-061,Attendance,Logic,Pie chart animation,Animates from 0 to value,Smooth animation on load.,Pass
+ATT-062,Attendance,Boundary,Mark attendance on semester end date,Accepted,Accepted.,Pass
+ATT-063,Attendance,Boundary,Mark attendance 1 day post-semester,Rejected,Threw 'Semester closed' error.,Pass
+ATT-065,Attendance,UX,Double tap on calendar,Does not zoom awkwardly,Viewport locked properly.,Pass
+ATT-066,Attendance,UI,Empty chart state (0 classes),"Shows grey circle, not broken image",Showed grey circle with 'No Data'.,Pass
+ATT-067,Attendance,Network,Drop connection exactly as response arrives,JSON parsing safe,"Handled gracefully, didn't crash.",Pass
+ATT-068,Attendance,Logic,Select date from previous year,Blocked,Blocked correctly.,Pass
+ATT-069,Attendance,Logic,Change subject quickly before API returns,Marks for original subject,Marked for the wrong (newly selected) subject. Race condition!,Fail
+ATT-070,Attendance,UX,Accessibility/TalkBack,Reads calendar dates aloud,Read dates perfectly.,Pass
+ATT-071,Attendance,UX,Hardware keyboard traversal,Tab moves through picker/dropdown/buttons,Tab skipped the dropdown entirely.,Fail
+ATT-072,Attendance,Logic,Database timestamp check,Time is logged in UTC,Verified in DB: UTC stored correctly.,Pass
+ATT-073,Attendance,UI,Ripple effect on Mark buttons,Visual feedback,Ripple works.,Pass
+ATT-074,Attendance,Error Handling,Simulate 500 server error,Graceful 'Try again' UI,Showed 'Server unavailable' snackbar.,Pass
+ATT-075,Attendance,End-to-End,Open app -> Select Subject -> Present -> Check Stats,Flow completes under 5 seconds,Completed smoothly in 3.2s.,Pass
+QUIZ-001,Quiz,UI,Navigate to Quiz Module,Displays active quizzes list,"List loaded, 2 active quizzes visible.",Pass
+QUIZ-002,Quiz,UI,Click a Quiz card,Opens quiz intro screen,Opened intro with instructions and 'Start' button.,Pass
+QUIZ-003,Quiz,Navigation,Click 'Start Quiz',Loads Question 1 and starts timer,"Q1 loaded, timer started at 15:00.",Pass
+QUIZ-004,Quiz,UI,Check Question UI,"Text, Options, Next button visible",All elements perfectly aligned.,Pass
+QUIZ-005,Quiz,Functionality,Select single-choice Option A,Option A highlights (Radio button),Highlighted correctly in blue.,Pass
+QUIZ-006,Quiz,Functionality,Select Option B after A,"A deselects, B selects",Switched correctly.,Pass
+QUIZ-007,Quiz,Functionality,Select multi-choice options A & C,Both highlight (Checkboxes),Both highlighted with checkmarks.,Pass
+QUIZ-008,Quiz,Navigation,Click 'Next' with answer selected,Moves to Q2,Transitioned smoothly to Q2.,Pass
+QUIZ-009,Quiz,Navigation,Click 'Next' without answer,Show warning: 'Please select an answer',Moved to Q2 anyway. No forced answer validation.,Fail
+QUIZ-010,Quiz,Navigation,Click 'Previous' from Q2,Returns to Q1,Returned to Q1.,Pass
+QUIZ-011,Quiz,State,Check Q1 state after returning,Previously selected answer is still selected,Answer was wiped clean. User has to re-enter. Critical bug.,Fail
+QUIZ-012,Quiz,UI,Check Timer Countdown,Ticks down every second,Ticks down correctly.,Pass
+QUIZ-013,Quiz,State,Minimize app for 10 seconds during quiz,Timer calculates background time,Timer paused. Exploit to get infinite time!,Fail
+QUIZ-014,Quiz,Functionality,Timer reaches 00:00,Auto-submits quiz,Quiz auto-submitted exactly at zero.,Pass
+QUIZ-015,Quiz,Functionality,Click 'Submit' button on last question,Prompt 'Are you sure?',Prompt appeared.,Pass
+QUIZ-016,Quiz,Navigation,Confirm Submit,"Calculates score, shows Result screen",Result screen loaded with confetti animation.,Pass
+QUIZ-017,Quiz,Calculation,"Score logic: 5 right, 0 wrong",Shows 5/5 or 100%,Showed 100%.,Pass
+QUIZ-018,Quiz,Calculation,"Score logic: 2 right, 3 wrong",Shows 2/5 or 40%,Showed 40%.,Pass
+QUIZ-019,Quiz,UI,Review Answers screen,Highlights correct (green) and incorrect (red),Color coding is correct and intuitive.,Pass
+QUIZ-021,Quiz,Edge,Turn off WiFi mid-quiz,Shows 'Offline mode' or caches,Threw immediate fatal network error. Lost progress.,Fail
+QUIZ-022,Quiz,Edge,Turn WiFi back on before submit,Reconnects and submits,N/A due to previous crash.,Fail
+QUIZ-023,Quiz,Navigation,Press hardware back button during quiz,Warns user progress will be lost,Warning modal appeared.,Pass
+QUIZ-024,Quiz,Navigation,Confirm exit on warning modal,"Returns to list, discards attempt",Returned correctly.,Pass
+QUIZ-025,Quiz,Security,Attempt to start same quiz again after completion,Error: 'Already attempted',Blocked correctly.,Pass
+QUIZ-026,Quiz,Security,Intercept Submit payload via Proxy,Check if correct answers are sent from client,Correct answers are NOT in payload. Computed on backend. Secure.,Pass
+QUIZ-027,Quiz,Security,Modify score payload via Proxy,"Try to send {\score\"": 100}""","Backend ignored payload score, recalculated natively. Secure.",Pass
+QUIZ-028,Quiz,Performance,Quiz with 50+ questions,Loads without lag,Lagged heavily on question transitions.,Fail
+QUIZ-029,Quiz,Content,Question with very long text,"Wraps cleanly, scrollable","Wrapped perfectly, container scrolled.",Pass
+QUIZ-030,Quiz,Content,Question with an Image,Image loads and is zoomable,Image loaded but could not be clicked/zoomed.,Fail
+QUIZ-031,Quiz,Content,Question with Math formulas (LaTeX),Renders properly,Rendered beautifully.,Pass
+QUIZ-032,Quiz,Content,Question with Code snippet block,"Monospace font, formatting kept","Code looked like standard text, lost all indentation.",Fail
+QUIZ-033,Quiz,UI,Progress bar visualization,Updates as user moves through questions,Bar filled up smoothly 10% per question.,Pass
+QUIZ-034,Quiz,Edge,Rapid double-tap 'Next',Only moves one question,Skipped a question entirely. Debounce needed.,Fail
+QUIZ-035,Quiz,Edge,Rapid double-tap 'Submit',Only submits once,"Submitted twice, recorded two attempts in DB.",Fail
+QUIZ-036,Quiz,Logic,Quiz availability window,Try to access quiz before start time,Button greyed out with countdown.,Pass
+QUIZ-037,Quiz,Logic,Quiz availability window,Try to access quiz after end time,Shows 'Expired'.,Pass
+QUIZ-038,Quiz,State,Screen rotation during quiz,"Layout adjusts, timer/answers stay",Timer reset to full 15:00 on rotation! Exploit.,Fail
+QUIZ-039,Quiz,Integration,Score updates Dashboard Leaderboard,Points reflect on home screen,Points updated instantly on dashboard return.,Pass
+QUIZ-040,Quiz,Logic,Clear/Reset answer button,Clears selected radio button,Clear Selection' button works.,Pass
+QUIZ-041,Quiz,UI,Dark mode check,"Text readable, images not inverted",Options were white text on white background in dark mode.,Fail
+QUIZ-042,Quiz,UI,Large Font Setting check,Buttons don't overlap,Next' button pushed off screen.,Fail
+QUIZ-043,Quiz,Network,Submit on slow 3G network,"Spinner shows, completes eventually","Spun for 12 seconds, completed safely.",Pass
+QUIZ-044,Quiz,Security,"Clear app data, login, retry quiz",Still blocked from retaking,"Blocked. Status is tied to DB, not local storage.",Pass
+QUIZ-047,Quiz,Logic,Unanswered questions warning on submit,Shows 'You left 3 questions blank',Warning calculated exact number of blank questions.,Pass
+QUIZ-051,Quiz,Integration,Receive push notification during quiz,Does not interrupt timer/UI,Heads-up notification showed safely.,Pass
+QUIZ-053,Quiz,UI,Timer turns red in last 1 minute,Visual urgency indicator,Turned red at 0:59.,Pass
+QUIZ-055,Quiz,Logic,Submit empty quiz (0 answers),Score calculates as 0,Calculated 0% properly.,Pass
+QUIZ-058,Quiz,Navigation,Pull down to refresh during quiz,Disabled,Pull-to-refresh disabled as expected.,Pass
+QUIZ-059,Quiz,UX,Accessibility/TalkBack,Reads question and options aloud,Read nicely. 'Option 1: Paris. Unchecked.',Pass
+QUIZ-060,Quiz,Logic,Text-input answer (Fill in blank),"Keyboard opens, accepts text","Worked, keyboard shifted UI up properly.",Pass
+QUIZ-061,Quiz,Validation,Text-input case sensitivity,paris' vs 'Paris',Evaluated correctly (case-insensitive).,Pass
+QUIZ-062,Quiz,Validation,Text-input trailing space,Paris ',Marked wrong due to trailing space. Needs trim logic.,Fail
+QUIZ-063,Quiz,Security,SQL Injection in text-input answer,Sanitized,Sanitized correctly.,Pass
+QUIZ-064,Quiz,Logic,Maximum attempts (e.g. 3 retries allowed),Blocks on 4th try,Blocked exactly on 4th attempt.,Pass
+QUIZ-065,Quiz,Navigation,Tap outside modal to dismiss 'Submit?',Closes modal,Closed modal safely.,Pass
+QUIZ-066,Quiz,Data Flow,Check database for answer blob,Stored as structured JSON,"Verified DB, stored cleanly.",Pass
+QUIZ-069,Quiz,Logic,Leaderboard tie-breaker,Sorts by time taken if scores are equal,Ranked correctly based on timestamp.,Pass
+QUIZ-075,Quiz,End-to-End,Complete Quiz from start to Leaderboard,Flawless flow,Completed. Flow is solid aside from the bugs noted above.,Pass
+NOT-001,Notification,UI,Open Notification Tray inside app,Shows empty state if no notifications,Empty state illustration loaded perfectly.,Pass
+NOT-002,Notification,UI,Check tray header,Reads 'Notifications' with a 'Clear All' button,Clear All button is missing.,Fail
+NOT-003,Notification,Logic,Trigger notification from backend,Device receives push notification,Arrived in 2 seconds.,Pass
+NOT-004,Notification,UI,Check badge counter on app icon,Counter increases by 1,Counter updated to '1' on Android launcher.,Pass
+NOT-005,Notification,Logic,Receive notification while app is in foreground,"Shows in-app banner/snackbar, no OS push","Handled correctly, showed custom snackbar.",Pass
+NOT-006,Notification,Logic,Receive notification while app is in background,Shows standard OS push notification,Showed OS push notification.,Pass
+NOT-007,Notification,Logic,Receive notification while app is killed,Shows standard OS push notification,Showed OS push notification.,Pass
+NOT-008,Notification,Navigation,Tap OS push notification,Opens app to Home screen,Opened app properly.,Pass
+NOT-009,Notification,Navigation,Tap deep-linked notification (e.g. Quiz reminder),Opens app directly to Quiz module,Opened app but did not route to Quiz. Just sat on Home screen.,Fail
+NOT-010,Notification,Logic,Check in-app tray after receiving push,Notification added to top of list,Added to list correctly.,Pass
+NOT-011,Notification,UI,Check notification UI in tray,"Shows Title, Body, Timestamp, Unread dot",All elements visible and aligned.,Pass
+NOT-012,Notification,Logic,Tap unread notification in in-app tray,Unread dot disappears (Mark as read),Dot disappeared instantly.,Pass
+NOT-013,Notification,Logic,Tap 'Clear All' (or swipe to delete),"List empties, shows empty state","Swiped to delete, item vanished.",Pass
+NOT-014,Notification,Content,Send push with extremely long body text,Text truncates gracefully in OS tray,Truncated with '...' as expected.,Pass
+NOT-015,Notification,Content,Send push with image payload,OS tray shows rich notification with image,Image did not load in notification tray. Blank space shown.,Fail
+NOT-016,Notification,Edge,Send push with null/missing body,"Fails gracefully, ignored by app",App crashed with NullPointerException in FirebaseService.,Fail
+NOT-017,Notification,Edge,Send push with missing title,Uses default app name as title,Defaulted to 'UniFlow'. Good fallback.,Pass
+NOT-018,Notification,Logic,Receive 5 notifications rapidly,OS groups them into a stack,Grouped as '5 new messages'.,Pass
+NOT-019,Notification,Security,"Logout user, send notification to old token",Device should NOT receive it,Device still received notification after logout. Security issue!,Fail
+NOT-020,Notification,Security,"Login as User B, send notification to User A",Device should NOT receive it,Did not receive. Handled correctly.,Pass
+NOT-021,Notification,Logic,Device restart,Push notifications still work,"Tokens persisted, notification arrived post-boot.",Pass
+NOT-022,Notification,Permissions,Deny notification permission on Android 13+,App handles denial gracefully,"App prompted once, then respected denial.",Pass
+NOT-023,Notification,UI,Notification icon silhouette,"Icon is distinct, white on transparent",Icon was a solid white square. Missing alpha channel.,Fail
+NOT-025,Notification,Data Flow,FCM token generation on first boot,Token sent to backend successfully,Verified in backend logs. Token registered.,Pass
+NOT-026,Notification,Data Flow,FCM token refresh scenario,New token updates on backend,Updated seamlessly without user action.,Pass
+NOT-027,Notification,UI,Relative timestamp formatting,Shows '2 mins ago' instead of full date,Showed absolute date '15-Apr-2026' instead.,Fail
+NOT-028,Notification,UI,Timestamp updates over time,Just now' becomes '1 min ago',Did not update until screen was refreshed.,Fail
+NOT-029,Notification,Logic,Network off -> Send Push -> Network on,Push arrives upon reconnection,Arrived the moment WiFi connected.,Pass
+NOT-030,Notification,Logic,Do Not Disturb (DND) mode enabled,Notification arrives silently,Arrived without sound or vibration.,Pass
+NOT-031,Notification,UX,Notification sound,Plays default or custom app sound,Played default OS chime.,Pass
+NOT-032,Notification,UX,Notification vibration,Device vibrates on receipt,Vibrated correctly.,Pass
+NOT-033,Notification,Security,Lock screen visibility setting,Respects OS setting (Hide sensitive content),Content was hidden correctly on lock screen.,Pass
+NOT-034,Notification,Data Flow,Database limit on notifications,Keeps only last 100 in app tray,List truncated at 100 correctly.,Pass
+NOT-035,Notification,Logic,Send HTML tags in push payload,Text is rendered or sanitized,HTML tags showed up as raw text. Needs rendering.,Fail
+NOT-036,Notification,Logic,Send emojis in push payload,Emojis render correctly,Emojis rendered beautifully.,Pass
+NOT-037,Notification,Performance,Open tray with 100 notifications,Loads smoothly without lag,"Slight stutter on first load, then smooth.",Pass
+NOT-038,Notification,UI,Pagination in tray,Scroll down to load older notifications,Lazy loaded older items correctly.,Pass
+NOT-039,Notification,Integration,Attendance low trigger,Auto-sends 'Attendance below 75%',Received successfully after marking absent.,Pass
+NOT-040,Notification,Integration,Quiz assigned trigger,Auto-sends 'New quiz available',Received successfully.,Pass
+NOT-041,Notification,Navigation,Dismiss OS notification without clicking,In-app tray still holds the notification,Verified. Item remained in app tray.,Pass
+NOT-043,Notification,UI,Dark mode for in-app tray,"Background dark, text light",Rendered perfectly in dark mode.,Pass
+NOT-045,Notification,Edge,Simulate FCM server outage,App continues to function normally,"App worked fine, just no pushes arrived.",Pass
+NOT-046,Notification,UX,Pull to refresh in notification tray,Fetches new items manually,Refreshed correctly.,Pass
+NOT-047,Notification,Security,FCM token hijacking attempt,Verify token binds to device ID,Backend rejected token copy to different device.,Pass
+NOT-048,Notification,UI,Unread count badge inside app navigation,Shows red dot on bell icon,Red dot appeared correctly.,Pass
+NOT-049,Notification,Logic,Clear all notifications,Red dot on bell icon disappears,Dot vanished immediately.,Pass
+NOT-050,Notification,UX,Swipe left to delete,"Item slides out, shows delete icon","Slide animation worked, deleted item.",Pass
+NOT-053,Notification,Logic,Send silent data message (no UI),App handles data payload in background,"Handled correctly, triggered background sync.",Pass
+NOT-055,Notification,Logic,Rate limiting display,Receive 50 notifications in 1 min,"OS bundled them safely, no device freeze.",Pass
+NOT-056,Notification,Edge,Send massive payload (> 4KB),"FCM rejects, app doesn't crash","FCM rejected it, app remained stable.",Pass
+NOT-057,Notification,Data Flow,App cleared from recents,Background service still listens for FCM,Arrived successfully.,Pass
+NOT-058,Notification,Security,Clear app data via Android settings,FCM token invalidated locally,"Token wiped, app acts like fresh install.",Pass
+NOT-059,Notification,UX,Screen wakes on notification (if enabled),Screen turns on,Screen woke up correctly.,Pass
+NOT-061,Notification,Logic,Disable 'Promotions' channel in OS,Important alerts still come through,"Disabled promo, still got Attendance alerts. Good.",Pass
+NOT-062,Notification,Content,Payload with special characters (e.g. Arabic),Renders RTL correctly,Rendered RTL perfectly.,Pass
+NOT-064,Notification,UI,Skeleton loader while fetching tray,Shows gray placeholders,Showed standard loading spinner instead of skeleton. Acceptable.,Pass
+NOT-065,Notification,UX,TalkBack/Accessibility on tray,Reads notification title and body,Read aloud perfectly.,Pass
+NOT-066,Notification,UX,TalkBack on 'Unread' state,Identifies item as unread,Read 'Unread notification...' correctly.,Pass
+NOT-067,Notification,Navigation,Back button from tray,Returns to previous screen,Returned to Home seamlessly.,Pass
+NOT-068,Notification,State,App paused during push fetch,Resumes gracefully,Resumed without crash.,Pass
+NOT-073,Notification,Edge,Date boundary change while tray is open,Today' changes to 'Yesterday' at midnight,"Did not update live, required refresh.",Fail
+NOT-075,Notification,End-to-End,"Receive, tap, read, clear, check badge",Complete flow works smoothly,Flow completed without errors.,Pass
+INT-001,Integration,E2E Flow,Register -> Login -> Dashboard,"Seamless transition, token retained","Navigated properly, token saved.",Pass
+INT-002,Integration,E2E Flow,Login -> Mark Attendance -> Check Dashboard,Dashboard Attendance widget updates,Widget updated instantly to reflect new stats.,Pass
+INT-003,Integration,E2E Flow,Dashboard -> Take Quiz -> Submit -> Dashboard,Dashboard Leaderboard/Points updates,Points incremented correctly.,Pass
+INT-004,Integration,Navigation,Bottom Navigation routing,Clicking Auth/Att/Quiz tabs switches fragments cleanly,Fragments swapped without reloading full activity.,Pass
+INT-005,Integration,State,Backstack Management,Navigate A -> B -> C -> Back -> Back,Returned C -> B -> A correctly.,Pass
+INT-006,Integration,State,Infinite loop prevention,Tap same tab 10 times,Did not add 10 instances to backstack.,Pass
+INT-007,Integration,Security,Token inclusion in headers,Check API calls in Attendance module,JWT token attached to 'Authorization' header properly.,Pass
+INT-008,Integration,Security,Global Session Expiry,"Invalidate token in DB, click anywhere",Kicked immediately to Login screen.,Pass
+INT-009,Integration,Error Handling,Global 500 Error handler,Simulate server crash during Quiz submit,"Showed global 'Server Error' UI, did not crash app.",Pass
+INT-010,Integration,Error Handling,Global 401 Error handler,Trigger unauthorized API call,Redirected to Login with 'Session Expired' toast.,Pass
+INT-011,Integration,Error Handling,Global Network drop handler,"Turn off WiFi, click any API action",Global 'No Internet' snackbar shown.,Pass
+INT-013,Integration,Data Sync,Cache Invalidation,Admin changes Quiz score -> User refreshes Home,Home fetched new score from server.,Pass
+INT-014,Integration,UI Consistency,Color palette across modules,Primary blue used consistently,Primary button color matched in all modules.,Pass
+INT-015,Integration,UI Consistency,Typography and Fonts,"Same font family used in Auth, Att, and Quiz",Consistent 'Roboto' font throughout.,Pass
+INT-018,Integration,Performance,App cold start time,Time to interactive dashboard,Took 1.8 seconds. Excellent.,Pass
+INT-019,Integration,Performance,App warm start time,Resume from background,Instantaneous resume.,Pass
+INT-020,Integration,Logic,Timezone consistency,Change device timezone -> mark Att -> take Quiz,All payloads used UTC timestamps correctly.,Pass
+INT-022,Integration,Edge,Change Display Size during use,Go to OS settings -> Huge -> Return to App,"App recreated activities properly, layout adapted.",Pass
+INT-024,Integration,UX,Keyboard behavior consistency,Keyboard pushes UI up in all forms,"Worked in Auth, but covered fields in Quiz text-input.",Fail
+INT-030,Integration,Logic,Cross-module data dependency,Mark absent -> Score multiplier drops in Quiz,Logic applied correctly by backend.,Pass
+INT-031,Integration,UX,Hardware Back Button,Closes dialogs -> Pops fragments -> Exits App,Navigated backstack logically.,Pass
+INT-033,Integration,UI,Dark Mode transition,Toggle OS dark mode while app is open,UI inverted without needing to restart app.,Pass
+INT-034,Integration,Logic,Concurrent API requests,Mark attendance AND submit quiz exactly at same time,Both queued and processed safely.,Pass
+INT-036,Integration,Logic,Handle malformed JSON from API,Simulate backend sending broken JSON,Global handler caught parse exception smoothly.,Pass
+INT-039,Integration,Network,Offline mode routing,Launch app with no internet,"Loaded cached dashboard, showed offline banner.",Pass
+INT-040,Integration,UI,Empty states consistency,Empty lists show similar graphics,Consistent illustration style across modules.,Pass
+INT-045,Integration,Logic,API Base URL configuration,"Points to Production, not Localhost/Staging",Verified build config. Points to prod.,Pass
+INT-046,Integration,Logic,Timeout configuration,All API calls timeout at 30s,Confirmed 30s limit in Retrofit/OkHttp client.,Pass
+INT-050,Integration,UI,Status bar color,Matches primary app theme,Status bar is solid blue. Matches theme.,Pass
+INT-056,Integration,UX,Swipe to refresh overlap,"Refresh Home, switch tabs quickly",Refresh indicator got stuck spinning on next tab.,Fail
+INT-062,Integration,Data Flow,Logout during API call,Click logout while Attendance is saving,"Request cancelled, logged out safely.",Pass
+INT-063,Integration,UX,Double click prevention global,Tap any button twice quickly,Prevented globally via debouncing utility.,Pass
+INT-072,Integration,E2E Flow,Student daily routine flow,Login -> Att -> Check Notifs -> Quiz -> Logout,Smooth 2-minute experience. Core loop is solid.,Pass
+INT-073,Integration,Logic,Data consistency check,Compare client stats with backend DB direct query,Values matched perfectly.,Pass
+INT-075,Integration,E2E Signoff,Vigorous Module Interaction,Final stress test of all systems,Passed with minor UI/UX bugs. Core logic is highly stable.,Pass

@@ -5,6 +5,7 @@ import '../../models/quiz_submission_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import 'assignment_details_screen.dart';
+import 'quiz_result_sheet.dart';
 import 'student_module_screen.dart'; // Gives access to QuizAttemptScreen
 
 class CourseDetailScreen extends StatelessWidget {
@@ -39,7 +40,9 @@ class CourseDetailScreen extends StatelessWidget {
   Future<void> _openMaterial(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid link.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Invalid link.')));
       return;
     }
     try {
@@ -47,7 +50,9 @@ class CourseDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to open material.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Unable to open material.')));
     }
   }
 
@@ -63,67 +68,37 @@ class CourseDetailScreen extends StatelessWidget {
     if (submission != null) {
       _showQuizResult(context, quiz, submission);
     } else {
-      Navigator.push(context, MaterialPageRoute(
-        builder: (_) => QuizAttemptScreen(quiz: quiz),
-      ));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => QuizAttemptScreen(quiz: quiz)),
+      );
     }
   }
 
-  Future<void> _showQuizResult(BuildContext context, QuizDashboardItem quiz, QuizSubmissionModel submission) async {
-    final totalMarks = quiz.quiz.totalMarks;
-    final percentage = totalMarks <= 0 ? 0.0 : (submission.score / totalMarks) * 100;
-    showModalBottomSheet<void>(
+  Future<void> _showQuizResult(
+    BuildContext context,
+    QuizDashboardItem quiz,
+    QuizSubmissionModel submission,
+  ) async {
+    await showQuizResultSheet(
       context: context,
-      showDragHandle: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(quiz.quiz.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.ink900, letterSpacing: -0.5)),
-            const SizedBox(height: 6),
-            Text('${quiz.courseCode} | ${quiz.courseTitle}', style: const TextStyle(color: AppColors.ink500, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: AppColors.surfaceWarm, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
-              child: Column(
-                children: [
-                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Score obtained', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink700)), Text('${submission.score}/$totalMarks', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryDark, fontSize: 18))]),
-                   const Padding(padding: EdgeInsets.symmetric(vertical: 12.0), child: Divider(height: 1, color: AppColors.border)),
-                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Percentage', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink700)), Text('${percentage.toStringAsFixed(1)}%', style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primaryDark, fontSize: 18))]),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), 
-              padding: const EdgeInsets.all(16), 
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: AppColors.success), 
-                  SizedBox(width: 12), 
-                  Expanded(
-                    child: Text('You have successfully submitted this quiz.', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w800))
-                  )
-                ]
-              )
-            ),
-          ],
-        ),
-      ),
+      quiz: quiz,
+      submission: submission,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     // Filter data specifically for this course
-    final materials = data.studyMaterials.where((m) => m.material.courseId == course.course.courseId).toList();
-    final assignments = data.pendingTasks.where((task) => task.assignment.courseId == course.course.courseId).toList();
-    final quizzes = data.quizzes.where((q) => q.quiz.courseId == course.course.courseId).toList();
+    final materials = data.studyMaterials
+        .where((m) => m.material.courseId == course.course.courseId)
+        .toList();
+    final assignments = data.pendingTasks
+        .where((task) => task.assignment.courseId == course.course.courseId)
+        .toList();
+    final quizzes = data.quizzes
+        .where((q) => q.quiz.courseId == course.course.courseId)
+        .toList();
 
     return DefaultTabController(
       length: 4,
@@ -141,12 +116,20 @@ class CourseDetailScreen extends StatelessWidget {
                 iconTheme: const IconThemeData(color: Colors.white),
                 flexibleSpace: FlexibleSpaceBar(
                   centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 60, bottom: 64, right: 16),
+                  titlePadding: const EdgeInsets.only(
+                    left: 60,
+                    bottom: 64,
+                    right: 16,
+                  ),
                   title: Text(
                     course.course.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18.0),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18.0,
+                    ),
                   ),
                   background: Stack(
                     fit: StackFit.expand,
@@ -163,7 +146,11 @@ class CourseDetailScreen extends StatelessWidget {
                       Positioned(
                         right: -30,
                         top: -10,
-                        child: Icon(Icons.school_rounded, size: 160, color: Colors.white.withValues(alpha: 0.08)),
+                        child: Icon(
+                          Icons.school_rounded,
+                          size: 160,
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
                       ),
                       Positioned(
                         left: 16,
@@ -171,19 +158,37 @@ class CourseDetailScreen extends StatelessWidget {
                         child: Container(
                           width: 32,
                           height: 32,
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
-                          child: const Icon(Icons.library_books, color: Colors.white, size: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.library_books,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
                       Positioned(
                         left: 16,
                         bottom: 96,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(999)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                           child: Text(
                             course.course.code,
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ),
                       ),
@@ -217,26 +222,63 @@ class CourseDetailScreen extends StatelessWidget {
                     _buildSectionTitle('Faculty Instructor'),
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
                       child: Row(
                         children: [
-                          CircleAvatar(backgroundColor: AppColors.primaryLight, child: Text(course.facultyName[0], style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold))),
+                          CircleAvatar(
+                            backgroundColor: AppColors.primaryLight,
+                            child: Text(
+                              course.facultyName[0],
+                              style: const TextStyle(
+                                color: AppColors.primaryDark,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                           const SizedBox(width: 16),
-                          Text(course.facultyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink900)),
+                          Text(
+                            course.facultyName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink900,
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
                     _buildSectionTitle('Course Description'),
-                    Text(course.course.description, style: const TextStyle(fontSize: 15, color: AppColors.ink700, height: 1.5)),
+                    Text(
+                      course.course.description,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: AppColors.ink700,
+                        height: 1.5,
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     _buildSectionTitle('Attendance Summary'),
                     Container(
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primaryDark, AppColors.primary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -244,20 +286,52 @@ class CourseDetailScreen extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${course.attendancePercentage.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Colors.white)),
-                              const Text('Attendance Rate', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+                              Text(
+                                '${course.attendancePercentage.toStringAsFixed(0)}%',
+                                style: const TextStyle(
+                                  fontSize: 40,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const Text(
+                                'Attendance Rate',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             child: Column(
                               children: [
-                                Text('${course.presentClasses} / ${course.totalClasses}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
-                                const Text('Classes', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                                Text(
+                                  '${course.presentClasses} / ${course.totalClasses}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const Text(
+                                  'Classes',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -266,7 +340,12 @@ class CourseDetailScreen extends StatelessWidget {
 
                 // Tab 2: Materials
                 materials.isEmpty
-                    ? const Center(child: Text('No study materials uploaded yet.', style: TextStyle(color: AppColors.ink500)))
+                    ? const Center(
+                        child: Text(
+                          'No study materials uploaded yet.',
+                          style: TextStyle(color: AppColors.ink500),
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: materials.length,
@@ -276,23 +355,56 @@ class CourseDetailScreen extends StatelessWidget {
                             margin: const EdgeInsets.only(bottom: 12),
                             elevation: 0,
                             color: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: const BorderSide(color: AppColors.border),
+                            ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
-                              onTap: () => _openMaterial(context, m.material.fileUrl),
+                              onTap: () =>
+                                  _openMaterial(context, m.material.fileUrl),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
                                 leading: Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: AppColors.primaryDark.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                                  child: const Icon(Icons.picture_as_pdf, color: AppColors.primaryDark),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryDark.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.picture_as_pdf,
+                                    color: AppColors.primaryDark,
+                                  ),
                                 ),
-                                title: Text(m.material.fileName, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900, fontSize: 15)),
+                                title: Text(
+                                  m.material.fileName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink900,
+                                    fontSize: 15,
+                                  ),
+                                ),
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 4),
-                                  child: Text('Uploaded by ${m.material.uploadedBy}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink500, fontSize: 13)),
+                                  child: Text(
+                                    'Uploaded by ${m.material.uploadedBy}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.ink500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                 ),
-                                trailing: const Icon(Icons.download_rounded, color: AppColors.primaryDark),
+                                trailing: const Icon(
+                                  Icons.download_rounded,
+                                  color: AppColors.primaryDark,
+                                ),
                               ),
                             ),
                           );
@@ -301,45 +413,97 @@ class CourseDetailScreen extends StatelessWidget {
 
                 // Tab 3: Assignments
                 assignments.isEmpty
-                    ? const Center(child: Text('No pending assignments.', style: TextStyle(color: AppColors.ink500)))
+                    ? const Center(
+                        child: Text(
+                          'No pending assignments.',
+                          style: TextStyle(color: AppColors.ink500),
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: assignments.length,
                         itemBuilder: (context, i) {
                           final t = assignments[i];
-                          final due = DateFormat('dd MMM, hh:mm a').format(t.dueDate);
-                          final isHighlighted = highlightAssignmentId != null && t.assignment.assignmentId == highlightAssignmentId;
+                          final due = DateFormat(
+                            'dd MMM, hh:mm a',
+                          ).format(t.dueDate);
+                          final isHighlighted =
+                              highlightAssignmentId != null &&
+                              t.assignment.assignmentId ==
+                                  highlightAssignmentId;
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             elevation: 0,
-                            color: isHighlighted ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
+                            color: isHighlighted
+                                ? AppColors.primary.withValues(alpha: 0.06)
+                                : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(color: isHighlighted ? AppColors.primaryDark : AppColors.border, width: isHighlighted ? 1.4 : 1),
+                              side: BorderSide(
+                                color: isHighlighted
+                                    ? AppColors.primaryDark
+                                    : AppColors.border,
+                                width: isHighlighted ? 1.4 : 1,
+                              ),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
                               onTap: () {
-                                Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => AssignmentDetailsScreen(
-                                    assignment: t.assignment,
-                                    courseCode: course.course.code,
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => AssignmentDetailsScreen(
+                                      assignment: t.assignment,
+                                      courseCode: course.course.code,
+                                    ),
                                   ),
-                                ));
+                                );
                               },
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
                                 leading: Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                                  child: const Icon(Icons.assignment, color: AppColors.warning),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.assignment,
+                                    color: AppColors.warning,
+                                  ),
                                 ),
-                                title: Text(t.assignment.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900, fontSize: 15)),
+                                title: Text(
+                                  t.assignment.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink900,
+                                    fontSize: 15,
+                                  ),
+                                ),
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 4),
-                                  child: Text('Due: $due', style: TextStyle(color: t.isOverdue ? AppColors.danger : AppColors.ink700, fontWeight: t.isOverdue ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
+                                  child: Text(
+                                    'Due: $due',
+                                    style: TextStyle(
+                                      color: t.isOverdue
+                                          ? AppColors.danger
+                                          : AppColors.ink700,
+                                      fontWeight: t.isOverdue
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                 ),
-                                trailing: const Icon(Icons.chevron_right, color: AppColors.ink300),
+                                trailing: const Icon(
+                                  Icons.chevron_right,
+                                  color: AppColors.ink300,
+                                ),
                               ),
                             ),
                           );
@@ -348,38 +512,82 @@ class CourseDetailScreen extends StatelessWidget {
 
                 // Tab 4: Quizzes
                 quizzes.isEmpty
-                    ? const Center(child: Text('No quizzes available.', style: TextStyle(color: AppColors.ink500)))
+                    ? const Center(
+                        child: Text(
+                          'No quizzes available.',
+                          style: TextStyle(color: AppColors.ink500),
+                        ),
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: quizzes.length,
                         itemBuilder: (context, i) {
                           final q = quizzes[i];
-                          final due = DateFormat('dd MMM, hh:mm a').format(q.endTime);
-                          final isHighlighted = highlightQuizId != null && q.quiz.id == highlightQuizId;
+                          final due = DateFormat(
+                            'dd MMM, hh:mm a',
+                          ).format(q.endTime);
+                          final isHighlighted =
+                              highlightQuizId != null &&
+                              q.quiz.id == highlightQuizId;
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             elevation: 0,
-                            color: isHighlighted ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
+                            color: isHighlighted
+                                ? AppColors.primary.withValues(alpha: 0.06)
+                                : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(color: isHighlighted ? AppColors.primaryDark : AppColors.border, width: isHighlighted ? 1.4 : 1),
+                              side: BorderSide(
+                                color: isHighlighted
+                                    ? AppColors.primaryDark
+                                    : AppColors.border,
+                                width: isHighlighted ? 1.4 : 1,
+                              ),
                             ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(16),
                               onTap: () => _handleQuizTap(context, q),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
                                 leading: Container(
                                   padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                                  child: const Icon(Icons.quiz, color: AppColors.success),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    Icons.quiz,
+                                    color: AppColors.success,
+                                  ),
                                 ),
-                                title: Text(q.quiz.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900, fontSize: 15)),
+                                title: Text(
+                                  q.quiz.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.ink900,
+                                    fontSize: 15,
+                                  ),
+                                ),
                                 subtitle: Padding(
                                   padding: const EdgeInsets.only(top: 4),
-                                  child: Text('Due: $due', style: const TextStyle(color: AppColors.ink700, fontSize: 13, fontWeight: FontWeight.w500)),
+                                  child: Text(
+                                    'Due: $due',
+                                    style: const TextStyle(
+                                      color: AppColors.ink700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ),
-                                trailing: const Icon(Icons.chevron_right, color: AppColors.ink300),
+                                trailing: const Icon(
+                                  Icons.chevron_right,
+                                  color: AppColors.ink300,
+                                ),
                               ),
                             ),
                           );
@@ -398,7 +606,12 @@ class CourseDetailScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title.toUpperCase(),
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.primaryDark, letterSpacing: 1.2),
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: AppColors.primaryDark,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }

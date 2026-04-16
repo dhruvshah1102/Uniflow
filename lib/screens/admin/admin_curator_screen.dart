@@ -41,11 +41,14 @@ class _AdminCuratorScreenState extends State<AdminCuratorScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
-    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (user == null)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (user.role != 'admin') {
       return Scaffold(
         appBar: AppBar(title: const Text('Access denied')),
-        body: const Center(child: Text('Only admin accounts can access this module.')),
+        body: const Center(
+          child: Text('Only admin accounts can access this module.'),
+        ),
       );
     }
 
@@ -66,14 +69,20 @@ class _AdminCuratorScreenState extends State<AdminCuratorScreen> {
             Expanded(
               child: Text(
                 'Academic Curator',
-                style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primaryDark,
+                ),
               ),
             ),
           ],
         ),
         actions: [
-          IconButton(onPressed: _refreshAll, icon: const Icon(Icons.notifications_none)),
-          IconButton(onPressed: auth.logout, icon: const Icon(Icons.logout_outlined)),
+          IconButton(onPressed: _refreshAll, icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: auth.logout,
+            icon: const Icon(Icons.logout_outlined),
+          ),
         ],
       ),
       body: _buildSelectedTab(user, auth.logout),
@@ -87,17 +96,34 @@ class _AdminCuratorScreenState extends State<AdminCuratorScreen> {
   Widget _buildSelectedTab(dynamic user, VoidCallback onLogout) {
     switch (_tab) {
       case _Tab.dashboard:
-        return _DashboardTab(overviewStream: _overviewStream, onRefresh: _refreshAll);
+        return _DashboardTab(
+          overviewStream: _overviewStream,
+          onRefresh: _refreshAll,
+        );
       case _Tab.users:
-        return UserManagementTab(service: _service, adminUid: user.id, onChanged: _refreshAll);
+        return UserManagementTab(
+          service: _service,
+          adminUid: user.id,
+          onChanged: _refreshAll,
+        );
       case _Tab.courses:
         return CreateCourseTab(service: _service, onChanged: _refreshAll);
       case _Tab.registrations:
-        return SemesterRegistrationReviewTab(adminId: user.id, onChanged: _refreshAll);
+        return SemesterRegistrationReviewTab(
+          adminId: user.id,
+          onChanged: _refreshAll,
+        );
       case _Tab.reports:
-        return _ReportsTab(reportsStream: _reportsStream, onRefresh: _refreshAll);
+        return _ReportsTab(
+          reportsStream: _reportsStream,
+          onRefresh: _refreshAll,
+        );
       case _Tab.profile:
-        return _ProfileTab(name: user.name, email: user.email, onLogout: onLogout);
+        return _ProfileTab(
+          name: user.name,
+          email: user.email,
+          onLogout: onLogout,
+        );
     }
   }
 }
@@ -112,17 +138,48 @@ class _DashboardTab extends StatelessWidget {
     return StreamBuilder<AdminOverview>(
       stream: overviewStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError) return _ErrorState(text: snapshot.error.toString(), onRetry: onRefresh);
-        final data = snapshot.data ?? const AdminOverview(totalStudents: 0, totalFaculty: 0, totalCourses: 0, pendingRegistrations: 0);
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError)
+          return _ErrorState(
+            text: snapshot.error.toString(),
+            onRetry: onRefresh,
+          );
+        final data =
+            snapshot.data ??
+            const AdminOverview(
+              totalStudents: 0,
+              totalFaculty: 0,
+              totalCourses: 0,
+              pendingRegistrations: 0,
+            );
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
           children: [
-            const Text('SYSTEM OVERVIEW', style: TextStyle(color: Color(0xFF01695B), letterSpacing: 1.2, fontWeight: FontWeight.w700, fontSize: 11)),
+            const Text(
+              'SYSTEM OVERVIEW',
+              style: TextStyle(
+                color: Color(0xFF01695B),
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
             const SizedBox(height: 8),
-            const Text('Hello, Admin', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 42, height: 1.1)),
+            const Text(
+              'Hello, Admin',
+              style: TextStyle(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w800,
+                fontSize: 42,
+                height: 1.1,
+              ),
+            ),
             const SizedBox(height: 6),
-            const Text('Welcome back to the IIIT Nagpur Academic Portal.', style: TextStyle(color: AppColors.ink700)),
+            const Text(
+              'Welcome back to the IIIT Nagpur Academic Portal.',
+              style: TextStyle(color: AppColors.ink700),
+            ),
             const SizedBox(height: 14),
             SizedBox(
               height: 44,
@@ -133,18 +190,40 @@ class _DashboardTab extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryDark,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 14),
-            _MetricCard(title: 'TOTAL STUDENTS', value: '${data.totalStudents}', leading: Icons.groups_2_outlined, accent: AppColors.primaryDark),
+            _MetricCard(
+              title: 'TOTAL STUDENTS',
+              value: '${data.totalStudents}',
+              leading: Icons.groups_2_outlined,
+              accent: AppColors.primaryDark,
+            ),
             const SizedBox(height: 10),
-            _MetricCard(title: 'TOTAL FACULTY', value: '${data.totalFaculty}', leading: Icons.school_outlined, accent: const Color(0xFF01695B)),
+            _MetricCard(
+              title: 'TOTAL FACULTY',
+              value: '${data.totalFaculty}',
+              leading: Icons.school_outlined,
+              accent: const Color(0xFF01695B),
+            ),
             const SizedBox(height: 10),
-            _MetricCard(title: 'TOTAL COURSES', value: '${data.totalCourses}', leading: Icons.book_outlined, accent: AppColors.primaryDark),
+            _MetricCard(
+              title: 'TOTAL COURSES',
+              value: '${data.totalCourses}',
+              leading: Icons.book_outlined,
+              accent: AppColors.primaryDark,
+            ),
             const SizedBox(height: 10),
-            _MetricCard(title: 'PENDING REGISTRATIONS', value: '${data.pendingRegistrations}', leading: Icons.assignment_late_outlined, accent: AppColors.danger),
+            _MetricCard(
+              title: 'PENDING REGISTRATIONS',
+              value: '${data.pendingRegistrations}',
+              leading: Icons.assignment_late_outlined,
+              accent: AppColors.danger,
+            ),
           ],
         );
       },
@@ -157,7 +236,12 @@ class _UsersTab extends StatelessWidget {
   final String roleFilter;
   final ValueChanged<String> onFilterChanged;
   final Future<void> Function() onChanged;
-  const _UsersTab({required this.service, required this.roleFilter, required this.onFilterChanged, required this.onChanged});
+  const _UsersTab({
+    required this.service,
+    required this.roleFilter,
+    required this.onFilterChanged,
+    required this.onChanged,
+  });
 
   Future<void> _addQuickUser(BuildContext context) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
@@ -174,7 +258,9 @@ class _UsersTab extends StatelessWidget {
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Created $email with temporary password $password')),
+      SnackBar(
+        content: Text('Created $email with temporary password $password'),
+      ),
     );
     await onChanged();
   }
@@ -188,9 +274,25 @@ class _UsersTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('INSTITUTIONAL RECORDS', style: TextStyle(color: Color(0xFF01695B), letterSpacing: 1.2, fontWeight: FontWeight.w700, fontSize: 11)),
+              const Text(
+                'INSTITUTIONAL RECORDS',
+                style: TextStyle(
+                  color: Color(0xFF01695B),
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
               const SizedBox(height: 8),
-              const Text('User Management', style: TextStyle(color: AppColors.primaryDark, fontSize: 44, fontWeight: FontWeight.w800, height: 1.05)),
+              const Text(
+                'User Management',
+                style: TextStyle(
+                  color: AppColors.primaryDark,
+                  fontSize: 44,
+                  fontWeight: FontWeight.w800,
+                  height: 1.05,
+                ),
+              ),
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
@@ -218,19 +320,31 @@ class _UsersTab extends StatelessWidget {
           child: StreamBuilder<List<AdminUserItem>>(
             stream: service.streamUsers(roleFilter: roleFilter),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-              if (snapshot.hasError) return _ErrorState(text: snapshot.error.toString(), onRetry: onChanged);
+              if (snapshot.connectionState == ConnectionState.waiting)
+                return const Center(child: CircularProgressIndicator());
+              if (snapshot.hasError)
+                return _ErrorState(
+                  text: snapshot.error.toString(),
+                  onRetry: onChanged,
+                );
               final users = snapshot.data ?? [];
-              if (users.isEmpty) return const Center(child: Text('No users found.'));
+              if (users.isEmpty)
+                return const Center(child: Text('No users found.'));
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 itemCount: users.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final user = users[index];
-                  final roleColor = user.role == 'faculty' ? AppColors.primaryDark : (user.role == 'admin' ? AppColors.danger : const Color(0xFF01695B));
+                  final roleColor = user.role == 'faculty'
+                      ? AppColors.primaryDark
+                      : (user.role == 'admin'
+                            ? AppColors.danger
+                            : const Color(0xFF01695B));
                   return Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
@@ -241,22 +355,52 @@ class _UsersTab extends StatelessWidget {
                               CircleAvatar(
                                 radius: 22,
                                 backgroundColor: roleColor.withOpacity(0.14),
-                                child: Text(user.name.isNotEmpty ? user.name[0].toUpperCase() : '?', style: TextStyle(color: roleColor, fontWeight: FontWeight.w800)),
+                                child: Text(
+                                  user.name.isNotEmpty
+                                      ? user.name[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: roleColor,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(user.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22)),
+                                child: Text(
+                                  user.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 22,
+                                  ),
+                                ),
                               ),
-                              Text(user.role.toUpperCase(), style: TextStyle(color: roleColor, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                              Text(
+                                user.role.toUpperCase(),
+                                style: TextStyle(
+                                  color: roleColor,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
                             ],
                           ),
                           const Divider(height: 24),
-                          Text('Department: ${user.department}', style: const TextStyle(color: AppColors.ink700)),
+                          Text(
+                            'Department: ${user.department}',
+                            style: const TextStyle(color: AppColors.ink700),
+                          ),
                           const SizedBox(height: 4),
-                          Text('ID: ${user.id}', style: const TextStyle(color: AppColors.ink700)),
+                          Text(
+                            'ID: ${user.id}',
+                            style: const TextStyle(color: AppColors.ink700),
+                          ),
                           if (user.semester != null) ...[
                             const SizedBox(height: 4),
-                            Text('Semester: ${user.semester}', style: const TextStyle(color: AppColors.ink700)),
+                            Text(
+                              'Semester: ${user.semester}',
+                              style: const TextStyle(color: AppColors.ink700),
+                            ),
                           ],
                         ],
                       ),
@@ -303,9 +447,20 @@ class _CoursesTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Course Management', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 44)),
+              const Text(
+                'Course Management',
+                style: TextStyle(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 44,
+                ),
+              ),
               const SizedBox(height: 8),
-              ElevatedButton.icon(onPressed: _addQuickCourse, icon: const Icon(Icons.add), label: const Text('Create Course')),
+              ElevatedButton.icon(
+                onPressed: _addQuickCourse,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Course'),
+              ),
             ],
           ),
         ),
@@ -313,10 +468,16 @@ class _CoursesTab extends StatelessWidget {
           child: StreamBuilder<List<AdminCourseItem>>(
             stream: service.streamCourses(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-              if (snapshot.hasError) return _ErrorState(text: snapshot.error.toString(), onRetry: onChanged);
+              if (snapshot.connectionState == ConnectionState.waiting)
+                return const Center(child: CircularProgressIndicator());
+              if (snapshot.hasError)
+                return _ErrorState(
+                  text: snapshot.error.toString(),
+                  onRetry: onChanged,
+                );
               final courses = snapshot.data ?? [];
-              if (courses.isEmpty) return const Center(child: Text('No courses found.'));
+              if (courses.isEmpty)
+                return const Center(child: Text('No courses found.'));
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 itemCount: courses.length,
@@ -325,11 +486,25 @@ class _CoursesTab extends StatelessWidget {
                   final c = courses[index];
                   return Card(
                     child: ListTile(
-                      leading: const CircleAvatar(backgroundColor: Color(0x1A01695B), child: Icon(Icons.menu_book, color: Color(0xFF01695B))),
-                      title: Text(c.courseName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text('${c.code} • ${c.semester}\nAssigned: ${c.facultyName.isEmpty ? 'Unassigned' : c.facultyName}'),
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0x1A01695B),
+                        child: Icon(Icons.menu_book, color: Color(0xFF01695B)),
+                      ),
+                      title: Text(
+                        c.courseName,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        '${c.code} • ${c.semester}\nAssigned: ${c.facultyName.isEmpty ? 'Unassigned' : c.facultyName}',
+                      ),
                       isThreeLine: true,
-                      trailing: Text('${c.credits}cr', style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark)),
+                      trailing: Text(
+                        '${c.credits}cr',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryDark,
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -346,17 +521,27 @@ class _RegistrationsTab extends StatelessWidget {
   final AdminModuleService service;
   final String adminId;
   final Future<void> Function() onChanged;
-  const _RegistrationsTab({required this.service, required this.adminId, required this.onChanged});
+  const _RegistrationsTab({
+    required this.service,
+    required this.adminId,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<AdminRegistrationItem>>(
       stream: service.streamPendingRegistrations(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError) return _ErrorState(text: snapshot.error.toString(), onRetry: onChanged);
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError)
+          return _ErrorState(
+            text: snapshot.error.toString(),
+            onRetry: onChanged,
+          );
         final items = snapshot.data ?? [];
-        if (items.isEmpty) return const Center(child: Text('No pending registrations.'));
+        if (items.isEmpty)
+          return const Center(child: Text('No pending registrations.'));
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           itemCount: items.length,
@@ -364,15 +549,26 @@ class _RegistrationsTab extends StatelessWidget {
           itemBuilder: (context, i) {
             final r = items[i];
             return Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(r.studentId, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
+                    Text(
+                      r.studentId,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 20,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(r.courseId, style: const TextStyle(color: AppColors.ink700)),
+                    Text(
+                      r.courseId,
+                      style: const TextStyle(color: AppColors.ink700),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -380,14 +576,26 @@ class _RegistrationsTab extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () async {
                               try {
-                                await service.rejectRegistration(registrationId: r.id, adminId: adminId);
+                                await service.rejectRegistration(
+                                  registrationId: r.id,
+                                  adminId: adminId,
+                                );
                                 await onChanged();
                               } catch (e, stack) {
-                                debugPrint('rejectRegistration failed for ${r.id}: $e');
+                                debugPrint(
+                                  'rejectRegistration failed for ${r.id}: $e',
+                                );
                                 debugPrint(stack.toString());
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                  SnackBar(
+                                    content: Text(
+                                      e.toString().replaceFirst(
+                                        'Exception: ',
+                                        '',
+                                      ),
+                                    ),
+                                  ),
                                 );
                               }
                             },
@@ -400,18 +608,34 @@ class _RegistrationsTab extends StatelessWidget {
                           child: ElevatedButton.icon(
                             onPressed: () async {
                               try {
-                                await service.approveRegistration(registrationId: r.id, adminId: adminId);
+                                await service.approveRegistration(
+                                  registrationId: r.id,
+                                  adminId: adminId,
+                                );
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Registration approved successfully.')),
+                                  const SnackBar(
+                                    content: Text(
+                                      'Registration approved successfully.',
+                                    ),
+                                  ),
                                 );
                                 await onChanged();
                               } catch (e, stack) {
-                                debugPrint('approveRegistration failed for ${r.id}: $e');
+                                debugPrint(
+                                  'approveRegistration failed for ${r.id}: $e',
+                                );
                                 debugPrint(stack.toString());
                                 if (!context.mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+                                  SnackBar(
+                                    content: Text(
+                                      e.toString().replaceFirst(
+                                        'Exception: ',
+                                        '',
+                                      ),
+                                    ),
+                                  ),
                                 );
                               }
                             },
@@ -442,27 +666,54 @@ class _ReportsTab extends StatelessWidget {
     return StreamBuilder<List<CourseReportItem>>(
       stream: reportsStream,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError) return _ErrorState(text: snapshot.error.toString(), onRetry: onRefresh);
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError)
+          return _ErrorState(
+            text: snapshot.error.toString(),
+            onRetry: onRefresh,
+          );
         final reports = snapshot.data ?? [];
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           children: [
-            const Text('Reports & Analytics', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 44, color: AppColors.primaryDark)),
+            const Text(
+              'Reports & Analytics',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 44,
+                color: AppColors.primaryDark,
+              ),
+            ),
             const SizedBox(height: 12),
-            ...reports.map((report) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.analytics_outlined, color: AppColors.primaryDark),
-                      title: Text('${report.course.code} - ${report.course.courseName}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text('Students: ${report.totalStudents}\nAttendance: ${report.attendancePercent.toStringAsFixed(1)}%'),
-                      isThreeLine: true,
+            ...reports.map(
+              (report) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Card(
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.analytics_outlined,
+                      color: AppColors.primaryDark,
                     ),
+                    title: Text(
+                      '${report.course.code} - ${report.course.courseName}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      'Students: ${report.totalStudents}\nAttendance: ${report.attendancePercent.toStringAsFixed(1)}%',
+                    ),
+                    isThreeLine: true,
                   ),
-                )),
+                ),
+              ),
+            ),
             if (reports.isEmpty)
-              const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No report data available.'))),
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No report data available.'),
+                ),
+              ),
           ],
         );
       },
@@ -474,7 +725,11 @@ class _ProfileTab extends StatelessWidget {
   final String name;
   final String email;
   final VoidCallback onLogout;
-  const _ProfileTab({required this.name, required this.email, required this.onLogout});
+  const _ProfileTab({
+    required this.name,
+    required this.email,
+    required this.onLogout,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -492,13 +747,33 @@ class _ProfileTab extends StatelessWidget {
             ),
           ),
           child: const Center(
-            child: Icon(Icons.admin_panel_settings, size: 120, color: Colors.white70),
+            child: Icon(
+              Icons.admin_panel_settings,
+              size: 120,
+              color: Colors.white70,
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        const Text('IIIT NAGPUR INSTITUTION PORTAL', style: TextStyle(color: Color(0xFF01695B), letterSpacing: 1.3, fontWeight: FontWeight.w700, fontSize: 11)),
+        const Text(
+          'IIIT NAGPUR INSTITUTION PORTAL',
+          style: TextStyle(
+            color: Color(0xFF01695B),
+            letterSpacing: 1.3,
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+          ),
+        ),
         const SizedBox(height: 8),
-        Text(name, style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 54, height: 1.05)),
+        Text(
+          name,
+          style: const TextStyle(
+            color: AppColors.primaryDark,
+            fontWeight: FontWeight.w800,
+            fontSize: 54,
+            height: 1.05,
+          ),
+        ),
         const SizedBox(height: 10),
         Text(email, style: const TextStyle(color: AppColors.ink700)),
         const SizedBox(height: 16),
@@ -506,7 +781,9 @@ class _ProfileTab extends StatelessWidget {
           onPressed: onLogout,
           icon: const Icon(Icons.logout),
           label: const Text('Logout from Portal'),
-          style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size.fromHeight(52),
+          ),
         ),
       ],
     );
@@ -518,7 +795,12 @@ class _MetricCard extends StatelessWidget {
   final String value;
   final IconData leading;
   final Color accent;
-  const _MetricCard({required this.title, required this.value, required this.leading, required this.accent});
+  const _MetricCard({
+    required this.title,
+    required this.value,
+    required this.leading,
+    required this.accent,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -531,14 +813,31 @@ class _MetricCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          CircleAvatar(backgroundColor: accent.withOpacity(0.15), child: Icon(leading, color: accent)),
+          CircleAvatar(
+            backgroundColor: accent.withOpacity(0.15),
+            child: Icon(leading, color: accent),
+          ),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: AppColors.ink500, fontSize: 11, letterSpacing: 1.1)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.ink500,
+                  fontSize: 11,
+                  letterSpacing: 1.1,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text(value, style: const TextStyle(fontSize: 34, color: AppColors.primaryDark, fontWeight: FontWeight.w800)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 34,
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
         ],
@@ -586,7 +885,10 @@ class _BottomBar extends StatelessWidget {
       selectedItemColor: AppColors.primaryDark,
       unselectedItemColor: AppColors.ink300,
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'DASHBOARD'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.dashboard),
+          label: 'DASHBOARD',
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.people), label: 'USERS'),
         BottomNavigationBarItem(icon: Icon(Icons.book), label: 'COURSES'),
         BottomNavigationBarItem(icon: Icon(Icons.fact_check), label: 'REG'),

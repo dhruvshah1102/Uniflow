@@ -1,10 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_colors.dart';
 import 'student_grades_screen.dart';
@@ -18,16 +19,10 @@ import 'semester_registration_screen.dart';
 import 'assignment_details_screen.dart';
 import '../../services/student_dashboard_service.dart';
 import '../../services/semester_registration_service.dart';
+import 'quiz_result_sheet.dart';
 import 'course_detail_screen.dart' as course_detail;
 
-
-enum _StudentTab {
-  courses,
-  attendance,
-  grades,
-  notifications,
-  profile,
-}
+enum _StudentTab { courses, attendance, grades, notifications, profile }
 
 _StudentTab _studentTabFromQuery(String? tab) {
   switch ((tab ?? '').trim().toLowerCase()) {
@@ -184,7 +179,11 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.border),
               ),
-              child: const Icon(Icons.school_outlined, color: AppColors.primaryDark, size: 18),
+              child: const Icon(
+                Icons.school_outlined,
+                color: AppColors.primaryDark,
+                size: 18,
+              ),
             ),
             const SizedBox(width: 10),
             const Text(
@@ -256,11 +255,26 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
           showUnselectedLabels: true,
           onTap: (index) => setState(() => _tab = _StudentTab.values[index]),
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), label: 'Courses'),
-            BottomNavigationBarItem(icon: Icon(Icons.timeline_outlined), label: 'Attendance'),
-            BottomNavigationBarItem(icon: Icon(Icons.grade_outlined), label: 'Grades'),
-            BottomNavigationBarItem(icon: Icon(Icons.campaign_outlined), label: 'Notices'),
-            BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book_outlined),
+              label: 'Courses',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.timeline_outlined),
+              label: 'Attendance',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grade_outlined),
+              label: 'Grades',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.campaign_outlined),
+              label: 'Notices',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Profile',
+            ),
           ],
         ),
       ),
@@ -322,12 +336,11 @@ class _DashboardTab extends StatelessWidget {
           const _BrandHeader(
             eyebrow: 'STUDENT PERFORMANCE',
             title: 'Attendance',
-            subtitle: 'Track attendance, enrolled courses and the latest academic updates from one place.',
+            subtitle:
+                'Track attendance, enrolled courses and the latest academic updates from one place.',
           ),
           const SizedBox(height: 16),
-          const _SegmentedBanner(
-            leftLabel: 'Current Semester',
-          ),
+          const _SegmentedBanner(leftLabel: 'Current Semester'),
           const SizedBox(height: 16),
           _AttendanceRingCard(
             attendance: data.overallAttendance,
@@ -386,11 +399,19 @@ class _DashboardTab extends StatelessWidget {
               children: [
                 _InfoRow(label: 'Name', value: data.user.name),
                 _InfoRow(label: 'Email', value: data.user.email),
-                _InfoRow(label: 'Department', value: data.studentProfile?.department ?? '-'),
-                _InfoRow(label: 'Semester', value: '${data.studentProfile?.semester ?? '-'}'),
+                _InfoRow(
+                  label: 'Department',
+                  value: data.studentProfile?.department ?? '-',
+                ),
+                _InfoRow(
+                  label: 'Semester',
+                  value: '${data.studentProfile?.semester ?? '-'}',
+                ),
                 _InfoRow(
                   label: 'Section',
-                  value: data.studentProfile?.section.isNotEmpty == true ? data.studentProfile!.section : '-',
+                  value: data.studentProfile?.section.isNotEmpty == true
+                      ? data.studentProfile!.section
+                      : '-',
                 ),
               ],
             ),
@@ -453,10 +474,10 @@ class _BrandHeader extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.05,
-                color: AppColors.ink900,
-              ),
+            fontWeight: FontWeight.w800,
+            height: 1.05,
+            color: AppColors.ink900,
+          ),
         ),
         const SizedBox(height: 10),
         Text(
@@ -475,9 +496,7 @@ class _BrandHeader extends StatelessWidget {
 class _SegmentedBanner extends StatelessWidget {
   final String leftLabel;
 
-  const _SegmentedBanner({
-    required this.leftLabel,
-  });
+  const _SegmentedBanner({required this.leftLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -498,7 +517,11 @@ class _SegmentedBanner extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const Icon(Icons.schedule_outlined, size: 18, color: AppColors.ink500),
+          const Icon(
+            Icons.schedule_outlined,
+            size: 18,
+            color: AppColors.ink500,
+          ),
         ],
       ),
     );
@@ -509,10 +532,7 @@ class _SurfaceCard extends StatelessWidget {
   final Widget child;
   final Color? accentColor;
 
-  const _SurfaceCard({
-    required this.child,
-    this.accentColor,
-  });
+  const _SurfaceCard({required this.child, this.accentColor});
 
   @override
   Widget build(BuildContext context) {
@@ -529,10 +549,7 @@ class _SurfaceCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.all(18), child: child),
     );
   }
 }
@@ -565,7 +582,11 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.ink900),
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink900,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
@@ -611,7 +632,10 @@ class _ActionPill extends StatelessWidget {
       avatar: Icon(icon, size: 18, color: AppColors.primaryDark),
       label: Text(label),
       backgroundColor: Colors.white,
-      labelStyle: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink700),
+      labelStyle: const TextStyle(
+        fontWeight: FontWeight.w700,
+        color: AppColors.ink700,
+      ),
       side: const BorderSide(color: AppColors.border),
     );
   }
@@ -650,7 +674,9 @@ class _AttendanceRingCard extends StatelessWidget {
                       value: (attendance / 100).clamp(0.0, 1.0),
                       strokeWidth: 10,
                       backgroundColor: AppColors.ink100,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.primaryDark),
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppColors.primaryDark,
+                      ),
                     ),
                   ),
                   Column(
@@ -658,7 +684,11 @@ class _AttendanceRingCard extends StatelessWidget {
                     children: [
                       Text(
                         '${attendance.toStringAsFixed(0)}%',
-                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.ink900,
+                        ),
                       ),
                       const Text(
                         'AGGREGATE',
@@ -678,15 +708,32 @@ class _AttendanceRingCard extends StatelessWidget {
           const SizedBox(height: 18),
           const Text(
             'Excellent Standings',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.ink900),
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink900,
+            ),
           ),
           const SizedBox(height: 8),
-          Text(note, style: const TextStyle(color: AppColors.ink500, height: 1.4)),
+          Text(
+            note,
+            style: const TextStyle(color: AppColors.ink500, height: 1.4),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _CountColumn(label: 'Present', value: presentCount.toString())),
-              Expanded(child: _CountColumn(label: 'Absent', value: absentCount.toString())),
+              Expanded(
+                child: _CountColumn(
+                  label: 'Present',
+                  value: presentCount.toString(),
+                ),
+              ),
+              Expanded(
+                child: _CountColumn(
+                  label: 'Absent',
+                  value: absentCount.toString(),
+                ),
+              ),
             ],
           ),
         ],
@@ -724,9 +771,19 @@ class _ThresholdCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(subtitle, style: const TextStyle(color: Colors.white70, height: 1.4)),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.white70, height: 1.4),
+          ),
           const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
@@ -753,17 +810,21 @@ class _AttendanceThresholdInfo {
   });
 }
 
-_AttendanceThresholdInfo _courseAttendanceThresholdInfo(List<CourseDashboardItem> courses) {
+_AttendanceThresholdInfo _courseAttendanceThresholdInfo(
+  List<CourseDashboardItem> courses,
+) {
   if (courses.isEmpty) {
     return const _AttendanceThresholdInfo(
-      subtitle: 'No enrolled courses yet. Course-wise attendance will appear after classes are recorded.',
+      subtitle:
+          'No enrolled courses yet. Course-wise attendance will appear after classes are recorded.',
       progress: 0,
     );
   }
 
   CourseDashboardItem? weakest;
   for (final course in courses) {
-    if (weakest == null || course.attendancePercentage < weakest.attendancePercentage) {
+    if (weakest == null ||
+        course.attendancePercentage < weakest.attendancePercentage) {
       weakest = course;
     }
   }
@@ -777,20 +838,23 @@ _AttendanceThresholdInfo _courseAttendanceThresholdInfo(List<CourseDashboardItem
 
   if (weakestCourse.totalClasses == 0) {
     return _AttendanceThresholdInfo(
-      subtitle: '${weakestCourse.course.code} has no attendance yet. Keep it above 75% once classes begin.',
+      subtitle:
+          '${weakestCourse.course.code} has no attendance yet. Keep it above 75% once classes begin.',
       progress: 0,
     );
   }
 
   if (weakestCourse.attendancePercentage >= 75) {
     return _AttendanceThresholdInfo(
-      subtitle: 'All courses are at or above 75%. Keep every subject above the minimum.',
+      subtitle:
+          'All courses are at or above 75%. Keep every subject above the minimum.',
       progress: 1,
     );
   }
 
   return _AttendanceThresholdInfo(
-    subtitle: '${weakestCourse.course.code} needs $needed more present class${needed == 1 ? '' : 'es'} to reach 75%.',
+    subtitle:
+        '${weakestCourse.course.code} needs $needed more present class${needed == 1 ? '' : 'es'} to reach 75%.',
     progress: (weakestCourse.attendancePercentage / 75).clamp(0.0, 1.0),
   );
 }
@@ -839,9 +903,22 @@ class _CourseBreakdownCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(course.course.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                    Text(
+                      course.course.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink900,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('${course.course.code} • ${course.facultyName}', style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+                    Text(
+                      '${course.course.code} • ${course.facultyName}',
+                      style: const TextStyle(
+                        color: AppColors.ink500,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -866,8 +943,20 @@ class _CourseBreakdownCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Lectures: ${course.presentClasses}/${course.totalClasses}', style: const TextStyle(color: AppColors.ink700, fontWeight: FontWeight.w600)),
-              Text(_statusLabel, style: TextStyle(color: _statusColor, fontWeight: FontWeight.w700)),
+              Text(
+                'Lectures: ${course.presentClasses}/${course.totalClasses}',
+                style: const TextStyle(
+                  color: AppColors.ink700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                _statusLabel,
+                style: TextStyle(
+                  color: _statusColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ],
           ),
         ],
@@ -880,10 +969,7 @@ class _SmallCounter extends StatelessWidget {
   final String title;
   final String value;
 
-  const _SmallCounter({
-    required this.title,
-    required this.value,
-  });
+  const _SmallCounter({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -896,9 +982,19 @@ class _SmallCounter extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+          Text(
+            title,
+            style: const TextStyle(color: AppColors.ink500, fontSize: 12),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(color: AppColors.primaryDark, fontSize: 24, fontWeight: FontWeight.w800)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.primaryDark,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -925,7 +1021,11 @@ class _DeadlineRow extends StatelessWidget {
           child: Center(
             child: Text(
               DateFormat('MMM').format(task.dueDate).toUpperCase(),
-              style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w800, fontSize: 10),
+              style: const TextStyle(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w800,
+                fontSize: 10,
+              ),
             ),
           ),
         ),
@@ -934,9 +1034,18 @@ class _DeadlineRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(task.assignment.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900)),
+              Text(
+                task.assignment.title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink900,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('${task.courseCode} • Due $due', style: const TextStyle(color: AppColors.ink500)),
+              Text(
+                '${task.courseCode} • Due $due',
+                style: const TextStyle(color: AppColors.ink500),
+              ),
             ],
           ),
         ),
@@ -950,19 +1059,30 @@ class _CountColumn extends StatelessWidget {
   final String label;
   final String value;
 
-  const _CountColumn({
-    required this.label,
-    required this.value,
-  });
+  const _CountColumn({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryDark,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(label.toUpperCase(), style: const TextStyle(color: AppColors.ink500, fontSize: 11, letterSpacing: 1.1)),
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(
+            color: AppColors.ink500,
+            fontSize: 11,
+            letterSpacing: 1.1,
+          ),
+        ),
       ],
     );
   }
@@ -1034,14 +1154,26 @@ class _ActivityTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(entry.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900)),
+                Text(
+                  entry.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink900,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('${entry.subtitle} • $time', style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+                Text(
+                  '${entry.subtitle} • $time',
+                  style: const TextStyle(color: AppColors.ink500, fontSize: 12),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          Text(entry.trailing, style: TextStyle(color: entry.color, fontWeight: FontWeight.w700)),
+          Text(
+            entry.trailing,
+            style: TextStyle(color: entry.color, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -1065,10 +1197,16 @@ class _AttendanceActivityRow extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: isPresent ? AppColors.success.withOpacity(0.12) : AppColors.danger.withOpacity(0.12),
+              color: isPresent
+                  ? AppColors.success.withOpacity(0.12)
+                  : AppColors.danger.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(isPresent ? Icons.check_circle : Icons.cancel, color: isPresent ? AppColors.success : AppColors.danger, size: 22),
+            child: Icon(
+              isPresent ? Icons.check_circle : Icons.cancel,
+              color: isPresent ? AppColors.success : AppColors.danger,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1077,16 +1215,25 @@ class _AttendanceActivityRow extends StatelessWidget {
               children: [
                 Text(
                   '${isPresent ? 'Present' : 'Absent'} • ${record.courseId}',
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink900,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(date, style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+                Text(
+                  date,
+                  style: const TextStyle(color: AppColors.ink500, fontSize: 12),
+                ),
               ],
             ),
           ),
           Text(
             isPresent ? '+1 Lecture' : 'Missed',
-            style: TextStyle(color: isPresent ? AppColors.success : AppColors.danger, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: isPresent ? AppColors.success : AppColors.danger,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -1115,10 +1262,22 @@ class _OverviewBar extends StatelessWidget {
             Expanded(
               child: Text(
                 label.toUpperCase(),
-                style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 1.2),
+                style: const TextStyle(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                ),
               ),
             ),
-            Text(value, style: const TextStyle(color: AppColors.ink900, fontWeight: FontWeight.w800, fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.ink900,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1155,7 +1314,14 @@ class _SoftChip extends StatelessWidget {
         color: color,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(label, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w700)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
@@ -1224,7 +1390,11 @@ class _IdentityCard extends StatelessWidget {
                 child: Center(
                   child: Text(
                     avatarText,
-                    style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppColors.primaryDark),
+                    style: const TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
                   ),
                 ),
               ),
@@ -1238,7 +1408,11 @@ class _IdentityCard extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
                   ),
-                  child: const Icon(Icons.verified, size: 12, color: Colors.white),
+                  child: const Icon(
+                    Icons.verified,
+                    size: 12,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -1250,14 +1424,28 @@ class _IdentityCard extends StatelessWidget {
             textColor: AppColors.success,
           ),
           const SizedBox(height: 12),
-          Text(name, style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primaryDark,
+            ),
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.school_outlined, size: 18, color: AppColors.ink700),
+              const Icon(
+                Icons.school_outlined,
+                size: 18,
+                color: AppColors.ink700,
+              ),
               const SizedBox(width: 6),
-              Text(department, style: const TextStyle(fontSize: 16, color: AppColors.ink700)),
+              Text(
+                department,
+                style: const TextStyle(fontSize: 16, color: AppColors.ink700),
+              ),
             ],
           ),
         ],
@@ -1270,10 +1458,7 @@ class _SemesterCard extends StatelessWidget {
   final int semester;
   final String academicYear;
 
-  const _SemesterCard({
-    required this.semester,
-    required this.academicYear,
-  });
+  const _SemesterCard({required this.semester, required this.academicYear});
 
   @override
   Widget build(BuildContext context) {
@@ -1297,16 +1482,30 @@ class _SemesterCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             semester.toString(),
-            style: const TextStyle(fontSize: 56, height: 0.95, fontWeight: FontWeight.w800, color: Colors.white),
+            style: const TextStyle(
+              fontSize: 56,
+              height: 0.95,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
           ),
           const SizedBox(height: 10),
           Container(
             width: 48,
             height: 4,
-            decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(999)),
+            decoration: BoxDecoration(
+              color: AppColors.success,
+              borderRadius: BorderRadius.circular(999),
+            ),
           ),
           const SizedBox(height: 10),
-          Text(academicYear, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+          Text(
+            academicYear,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -1335,7 +1534,10 @@ class _CourseFeatureCard extends StatelessWidget {
                   color: AppColors.primary.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.menu_book_outlined, color: AppColors.primaryDark),
+                child: const Icon(
+                  Icons.menu_book_outlined,
+                  color: AppColors.primaryDark,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -1345,7 +1547,8 @@ class _CourseFeatureCard extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerRight,
                       child: _SoftChip(
-                        label: '${course.course.code} | SEM ${course.course.semester}',
+                        label:
+                            '${course.course.code} | SEM ${course.course.semester}',
                         color: AppColors.ink100,
                         textColor: AppColors.ink500,
                       ),
@@ -1353,12 +1556,20 @@ class _CourseFeatureCard extends StatelessWidget {
                     const SizedBox(height: 10),
                     Text(
                       course.course.title,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.ink900, height: 1.15),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink900,
+                        height: 1.15,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       course.course.description,
-                      style: const TextStyle(color: AppColors.ink500, height: 1.35),
+                      style: const TextStyle(
+                        color: AppColors.ink500,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
@@ -1368,8 +1579,15 @@ class _CourseFeatureCard extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(child: _StatTile(label: 'Faculty', value: course.facultyName)),
-              Expanded(child: _StatTile(label: 'Attendance', value: '${course.attendancePercentage.toStringAsFixed(0)}%')),
+              Expanded(
+                child: _StatTile(label: 'Faculty', value: course.facultyName),
+              ),
+              Expanded(
+                child: _StatTile(
+                  label: 'Attendance',
+                  value: '${course.attendancePercentage.toStringAsFixed(0)}%',
+                ),
+              ),
             ],
           ),
         ],
@@ -1382,10 +1600,7 @@ class _StatTile extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatTile({
-    required this.label,
-    required this.value,
-  });
+  const _StatTile({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1441,14 +1656,21 @@ class _FeaturedTaskCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 task.isOverdue ? 'Overdue' : 'Due $due',
-                style: TextStyle(color: badgeColor, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: badgeColor,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 14),
           Text(
             '${task.courseCode}: ${task.assignment.title}',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.ink900),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.ink900,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1486,7 +1708,9 @@ class _TaskFeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final due = DateFormat('dd MMM, hh:mm a').format(task.dueDate);
-    final statusColor = task.isOverdue ? AppColors.danger : AppColors.primaryDark;
+    final statusColor = task.isOverdue
+        ? AppColors.danger
+        : AppColors.primaryDark;
 
     return _SurfaceCard(
       accentColor: statusColor,
@@ -1504,11 +1728,19 @@ class _TaskFeatureCard extends StatelessWidget {
         },
         leading: CircleAvatar(
           backgroundColor: statusColor.withOpacity(0.12),
-          child: Icon(task.isOverdue ? Icons.warning_amber_outlined : Icons.assignment_outlined, color: statusColor),
+          child: Icon(
+            task.isOverdue
+                ? Icons.warning_amber_outlined
+                : Icons.assignment_outlined,
+            color: statusColor,
+          ),
         ),
         title: Text(
           task.assignment.title,
-          style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink900,
+          ),
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -1549,7 +1781,11 @@ class _QuizCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   quiz.quiz.title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink900,
+                  ),
                 ),
               ),
             ],
@@ -1568,7 +1804,10 @@ class _QuizCard extends StatelessWidget {
           if (submission != null)
             Text(
               'Result: ${submission!.score}/${quiz.quiz.totalMarks}',
-              style: const TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           const SizedBox(height: 12),
           Align(
@@ -1602,7 +1841,10 @@ class _MaterialDownloadCard extends StatelessWidget {
               color: AppColors.primary.withOpacity(0.12),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.picture_as_pdf_outlined, color: AppColors.primaryDark),
+            child: const Icon(
+              Icons.picture_as_pdf_outlined,
+              color: AppColors.primaryDark,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1611,7 +1853,10 @@ class _MaterialDownloadCard extends StatelessWidget {
               children: [
                 Text(
                   material.material.fileName,
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink900),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1619,7 +1864,10 @@ class _MaterialDownloadCard extends StatelessWidget {
                   style: const TextStyle(color: AppColors.ink500, fontSize: 12),
                 ),
                 const SizedBox(height: 3),
-                Text('Uploaded $uploaded', style: const TextStyle(color: AppColors.ink500, fontSize: 12)),
+                Text(
+                  'Uploaded $uploaded',
+                  style: const TextStyle(color: AppColors.ink500, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -1639,10 +1887,15 @@ class QuizAttemptScreen extends StatefulWidget {
   State<QuizAttemptScreen> createState() => QuizAttemptScreenState();
 }
 
-class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindingObserver {
+class QuizAttemptScreenState extends State<QuizAttemptScreen>
+    with WidgetsBindingObserver {
   final StudentDashboardService _service = StudentDashboardService.instance;
   final Map<String, String> _answers = {};
   late final Future<List<QuizQuestionModel>> _questionsFuture;
+  Timer? _timer;
+  final Stopwatch _stopwatch = Stopwatch();
+  Duration _initialRemaining = Duration.zero;
+  Duration _remaining = Duration.zero;
   bool _submitting = false;
   bool _locked = false;
 
@@ -1651,10 +1904,13 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
     super.initState();
     _questionsFuture = _service.fetchQuizQuestions(widget.quiz.quiz.id);
     WidgetsBinding.instance.addObserver(this);
+    _startCountdown();
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
+    _stopwatch.stop();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -1662,9 +1918,100 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_locked || _submitting) return;
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
       _submitQuiz(autoSubmitted: true);
     }
+  }
+
+  void _startCountdown() {
+    _timer?.cancel();
+    _stopwatch
+      ..reset()
+      ..start();
+    _initialRemaining = widget.quiz.endTime.difference(DateTime.now());
+    if (_initialRemaining.isNegative) {
+      _initialRemaining = Duration.zero;
+    }
+
+    void tick() {
+      if (!mounted || _locked) {
+        _timer?.cancel();
+        return;
+      }
+
+      final remaining = _initialRemaining - _stopwatch.elapsed;
+      if (remaining <= Duration.zero) {
+        setState(() => _remaining = Duration.zero);
+        if (_submitting) {
+          return;
+        }
+        _timer?.cancel();
+        _submitQuiz(autoSubmitted: true);
+        return;
+      }
+
+      setState(() => _remaining = remaining);
+    }
+
+    tick();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => tick());
+  }
+
+  String _formatRemaining(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  int _calculateScore(List<QuizQuestionModel> questions) {
+    var score = 0;
+    for (final question in questions) {
+      final answer = (_answers[question.id] ?? '').trim().toLowerCase();
+      final correct = question.correctAnswer.trim().toLowerCase();
+      if (answer.isNotEmpty && answer == correct) {
+        score += question.marks;
+      }
+    }
+    return score;
+  }
+
+  Future<bool> _confirmUnattemptedSubmit(
+    List<QuizQuestionModel> questions,
+  ) async {
+    final unattemptedCount = questions.where((question) {
+      return (_answers[question.id] ?? '').trim().isEmpty;
+    }).length;
+
+    if (unattemptedCount == 0) {
+      return true;
+    }
+
+    final shouldSubmit = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Unattempted questions'),
+        content: Text(
+          'You have $unattemptedCount unanswered question${unattemptedCount == 1 ? '' : 's'}. Do you want to submit the quiz now?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Submit anyway'),
+          ),
+        ],
+      ),
+    );
+
+    return shouldSubmit ?? false;
   }
 
   Future<void> _submitQuiz({bool autoSubmitted = false}) async {
@@ -1677,11 +2024,39 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
     setState(() => _submitting = true);
     try {
       questions = await _questionsFuture;
+      if (!autoSubmitted && !await _confirmUnattemptedSubmit(questions)) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        return;
+      }
+      final score = _calculateScore(questions);
       await _service.submitQuizAttempt(
         quizId: widget.quiz.quiz.id,
         studentId: user.id,
         answers: _answers,
       );
+      final submission = QuizSubmissionModel(
+        id: '${widget.quiz.quiz.id}_${user.id}',
+        quizId: widget.quiz.quiz.id,
+        studentId: user.id,
+        answers: Map<String, String>.from(_answers),
+        score: score,
+        submittedAt: Timestamp.now(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _locked = true;
+      });
+      await showQuizResultSheet(
+        context: context,
+        quiz: widget.quiz,
+        submission: submission,
+      );
+      if (mounted) {
+        Navigator.pop(context);
+      }
+      return;
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -1690,30 +2065,12 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
       );
       return;
     }
-    if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      _locked = true;
-    });
-    final correctCount = questions.where((q) => _answers[q.id]?.trim().toLowerCase() == q.correctAnswer.trim().toLowerCase()).length;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          autoSubmitted
-              ? 'Quiz auto-submitted due to app exit. Correct answers: $correctCount/${questions.length}'
-              : 'Quiz submitted. Score saved. Correct answers: $correctCount/${questions.length}',
-        ),
-      ),
-    );
-    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.quiz.quiz.title),
-      ),
+      appBar: AppBar(title: Text(widget.quiz.quiz.title)),
       body: FutureBuilder<List<QuizQuestionModel>>(
         future: _questionsFuture,
         builder: (context, snapshot) {
@@ -1721,7 +2078,12 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text(snapshot.error.toString(), textAlign: TextAlign.center));
+            return Center(
+              child: Text(
+                snapshot.error.toString(),
+                textAlign: TextAlign.center,
+              ),
+            );
           }
           final questions = snapshot.data ?? [];
           if (questions.isEmpty) {
@@ -1735,11 +2097,42 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.quiz.courseTitle, style: const TextStyle(color: AppColors.ink500)),
+                    Text(
+                      widget.quiz.courseTitle,
+                      style: const TextStyle(color: AppColors.ink500),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       '${widget.quiz.questionCount} questions | ${widget.quiz.quiz.totalMarks} marks',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryDark),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _SurfaceCard(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.timer_outlined,
+                      color: _remaining <= const Duration(minutes: 1)
+                          ? AppColors.danger
+                          : AppColors.primaryDark,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      _locked
+                          ? 'Quiz submitted'
+                          : 'Time left: ${_formatRemaining(_remaining)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: _remaining <= const Duration(minutes: 1)
+                            ? AppColors.danger
+                            : AppColors.primaryDark,
+                      ),
                     ),
                   ],
                 ),
@@ -1756,7 +2149,10 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: Color(0xFFB85C00)),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFB85C00),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -1772,40 +2168,52 @@ class QuizAttemptScreenState extends State<QuizAttemptScreen> with WidgetsBindin
                 ),
               ),
               const SizedBox(height: 12),
-              ...questions.asMap().entries.map(
-                (entry) {
-                  final question = entry.value;
-                  final options = question.options ?? const <String>[];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _SurfaceCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Q${entry.key + 1}. ${question.questionText}',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
+              ...questions.asMap().entries.map((entry) {
+                final question = entry.value;
+                final options = question.options ?? const <String>[];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _SurfaceCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Q${entry.key + 1}. ${question.questionText}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink900,
                           ),
-                          const SizedBox(height: 12),
-                          ...options.map(
-                            (option) => RadioListTile<String>(
-                              value: option,
-                              groupValue: _answers[question.id],
-                              onChanged: _locked ? null : (value) => setState(() => _answers[question.id] = value ?? ''),
-                              title: Text(option),
-                            ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...options.map(
+                          (option) => RadioListTile<String>(
+                            value: option,
+                            groupValue: _answers[question.id],
+                            onChanged: _locked
+                                ? null
+                                : (value) => setState(
+                                    () => _answers[question.id] = value ?? '',
+                                  ),
+                            title: Text(option),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              }),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: (_submitting || _locked) ? null : () => _submitQuiz(),
+                onPressed: (_submitting || _locked)
+                    ? null
+                    : () => _submitQuiz(),
                 icon: const Icon(Icons.check_circle_outline),
-                label: Text(_locked ? 'Submitted' : (_submitting ? 'Submitting...' : 'Submit Quiz')),
+                label: Text(
+                  _locked
+                      ? 'Submitted'
+                      : (_submitting ? 'Submitting...' : 'Submit Quiz'),
+                ),
               ),
             ],
           );
@@ -1832,11 +2240,16 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
 
   String get _actionText {
     switch (widget.notification.notification.type.toLowerCase()) {
-      case 'assignment': return 'View Assignment';
-      case 'quiz': return 'View Quiz';
-      case 'attendance': return 'View Attendance';
-      case 'material': return 'View Material';
-      default: return 'View Details';
+      case 'assignment':
+        return 'View Assignment';
+      case 'quiz':
+        return 'View Quiz';
+      case 'attendance':
+        return 'View Attendance';
+      case 'material':
+        return 'View Material';
+      default:
+        return 'View Details';
     }
   }
 
@@ -1852,14 +2265,18 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
       decoration: BoxDecoration(
         color: note.read ? Colors.transparent : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: note.read ? Colors.transparent : AppColors.border),
-        boxShadow: note.read ? [] : [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
+        border: Border.all(
+          color: note.read ? Colors.transparent : AppColors.border,
+        ),
+        boxShadow: note.read
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -1877,7 +2294,9 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: note.read ? AppColors.ink100 : AppColors.primary.withOpacity(0.1),
+                        color: note.read
+                            ? AppColors.ink100
+                            : AppColors.primary.withOpacity(0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -1898,57 +2317,98 @@ class _AnnouncementCardState extends State<_AnnouncementCard> {
                                   note.notification.title,
                                   style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight: note.read ? FontWeight.w600 : FontWeight.w800,
-                                    color: note.read ? AppColors.ink700 : AppColors.ink900,
+                                    fontWeight: note.read
+                                        ? FontWeight.w600
+                                        : FontWeight.w800,
+                                    color: note.read
+                                        ? AppColors.ink700
+                                        : AppColors.ink900,
                                     height: 1.2,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              if (!note.read) const CircleAvatar(radius: 4, backgroundColor: AppColors.primary),
+                              if (!note.read)
+                                const CircleAvatar(
+                                  radius: 4,
+                                  backgroundColor: AppColors.primary,
+                                ),
                             ],
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            _expanded ? note.notification.body : note.notification.body.replaceAll('\n', ' '),
+                            _expanded
+                                ? note.notification.body
+                                : note.notification.body.replaceAll('\n', ' '),
                             maxLines: _expanded ? null : 2,
                             overflow: _expanded ? null : TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 14,
-                              color: note.read ? AppColors.ink500 : AppColors.ink700,
+                              color: note.read
+                                  ? AppColors.ink500
+                                  : AppColors.ink700,
                               height: 1.4,
                             ),
                           ),
                           if (_expanded) ...[
-                             const SizedBox(height: 16),
-                             Row(
-                               children: [
-                                 Text('$date at $time', style: const TextStyle(fontSize: 12, color: AppColors.ink300, fontWeight: FontWeight.w600)),
-                                 const Spacer(),
-                                 FilledButton.tonal(
-                                   style: FilledButton.styleFrom(
-                                     visualDensity: VisualDensity.compact,
-                                     backgroundColor: AppColors.primary.withOpacity(0.1),
-                                     foregroundColor: AppColors.primaryDark,
-                                   ),
-                                   onPressed: () async {
-                                      final route = await _routeForNotification();
-                                      if (route.isNotEmpty && context.mounted) context.push(route);
-                                   },
-                                   child: Text(_actionText, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                 ),
-                               ],
-                             )
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Text(
+                                  '$date at $time',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.ink300,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Spacer(),
+                                FilledButton.tonal(
+                                  style: FilledButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: AppColors.primary
+                                        .withOpacity(0.1),
+                                    foregroundColor: AppColors.primaryDark,
+                                  ),
+                                  onPressed: () async {
+                                    final route = await _routeForNotification();
+                                    if (route.isNotEmpty && context.mounted)
+                                      context.push(route);
+                                  },
+                                  child: Text(
+                                    _actionText,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ] else ...[
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Text(_prettyType(note.notification.type), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primaryLight, letterSpacing: 0.5)),
+                                Text(
+                                  _prettyType(note.notification.type),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primaryLight,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                                 const Spacer(),
-                                Text(time, style: const TextStyle(fontSize: 12, color: AppColors.ink300, fontWeight: FontWeight.w500)),
+                                Text(
+                                  time,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.ink300,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ],
                             ),
-                          ]
+                          ],
                         ],
                       ),
                     ),
@@ -1969,10 +2429,16 @@ bool _isLegacyGenericDashboardRoute(String route) {
       normalized == '/student/dashboard?tab=courses';
 }
 
-Future<String?> _recoverCourseIdFromDocument(String collection, String? sourceId) async {
+Future<String?> _recoverCourseIdFromDocument(
+  String collection,
+  String? sourceId,
+) async {
   final id = sourceId?.trim();
   if (id == null || id.isEmpty) return null;
-  final snapshot = await FirebaseFirestore.instance.collection(collection).doc(id).get();
+  final snapshot = await FirebaseFirestore.instance
+      .collection(collection)
+      .doc(id)
+      .get();
   final data = snapshot.data();
   if (data == null) return null;
   final courseId = (data['courseId'] ?? data['course_id'])?.toString().trim();
@@ -1980,7 +2446,9 @@ Future<String?> _recoverCourseIdFromDocument(String collection, String? sourceId
   return courseId;
 }
 
-Future<String> _resolveLegacyNoticeRoute(DashboardNotificationItem notificationItem) async {
+Future<String> _resolveLegacyNoticeRoute(
+  DashboardNotificationItem notificationItem,
+) async {
   final note = notificationItem.notification;
   final explicit = note.route?.trim();
   final courseId = note.courseId?.trim();
@@ -1990,10 +2458,16 @@ Future<String> _resolveLegacyNoticeRoute(DashboardNotificationItem notificationI
   final sourceCollection = note.sourceCollection?.trim().toLowerCase();
   final type = note.type.trim().toLowerCase();
 
-  final resolvedAssignmentId = (assignmentId != null && assignmentId.isNotEmpty) ? assignmentId : sourceId;
-  final resolvedQuizId = (quizId != null && quizId.isNotEmpty) ? quizId : sourceId;
+  final resolvedAssignmentId = (assignmentId != null && assignmentId.isNotEmpty)
+      ? assignmentId
+      : sourceId;
+  final resolvedQuizId = (quizId != null && quizId.isNotEmpty)
+      ? quizId
+      : sourceId;
 
-  if (explicit != null && explicit.isNotEmpty && !_isLegacyGenericDashboardRoute(explicit)) {
+  if (explicit != null &&
+      explicit.isNotEmpty &&
+      !_isLegacyGenericDashboardRoute(explicit)) {
     return explicit;
   }
 
@@ -2014,21 +2488,30 @@ Future<String> _resolveLegacyNoticeRoute(DashboardNotificationItem notificationI
   }
 
   if (sourceCollection == 'assignments' || type == 'assignment') {
-    final recoveredCourseId = await _recoverCourseIdFromDocument('assignments', resolvedAssignmentId);
+    final recoveredCourseId = await _recoverCourseIdFromDocument(
+      'assignments',
+      resolvedAssignmentId,
+    );
     if (recoveredCourseId != null) {
       return '/student/course/$recoveredCourseId?tab=assignments&assignmentId=${resolvedAssignmentId ?? ''}';
     }
   }
 
   if (sourceCollection == 'quizzes' || type == 'quiz') {
-    final recoveredCourseId = await _recoverCourseIdFromDocument('quizzes', resolvedQuizId);
+    final recoveredCourseId = await _recoverCourseIdFromDocument(
+      'quizzes',
+      resolvedQuizId,
+    );
     if (recoveredCourseId != null) {
       return '/student/course/$recoveredCourseId?tab=quizzes&quizId=${resolvedQuizId ?? ''}';
     }
   }
 
   if (sourceCollection == 'materials' || type == 'material') {
-    final recoveredCourseId = await _recoverCourseIdFromDocument('materials', sourceId);
+    final recoveredCourseId = await _recoverCourseIdFromDocument(
+      'materials',
+      sourceId,
+    );
     if (recoveredCourseId != null) {
       return '/student/course/$recoveredCourseId?tab=materials&materialId=${sourceId ?? ''}';
     }
@@ -2047,7 +2530,6 @@ Future<String> _resolveLegacyNoticeRoute(DashboardNotificationItem notificationI
       return '/student/dashboard?tab=notifications';
   }
 }
-
 
 String _prettyType(String type) {
   if (type.isEmpty) {
@@ -2072,25 +2554,30 @@ IconData _notificationIcon(String type) {
 }
 
 String _initials(String name) {
-  final parts = name.trim().split(RegExp(r'\s+')).where((part) => part.isNotEmpty).toList();
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
   if (parts.isEmpty) return 'S';
   if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
-  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'.toUpperCase();
+  return '${parts.first.substring(0, 1)}${parts.last.substring(0, 1)}'
+      .toUpperCase();
 }
 
 class _CoursesTab extends StatelessWidget {
   final StudentDashboardData data;
   final VoidCallback onOpenRegistration;
 
-  const _CoursesTab({
-    required this.data,
-    required this.onOpenRegistration,
-  });
+  const _CoursesTab({required this.data, required this.onOpenRegistration});
 
   void _navigateToDetail(BuildContext context, CourseDashboardItem course) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => course_detail.CourseDetailScreen(course: course, data: data),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            course_detail.CourseDetailScreen(course: course, data: data),
+      ),
+    );
   }
 
   @override
@@ -2166,14 +2653,17 @@ class _UpcomingCourseCard extends StatelessWidget {
                     Text(
                       course.course.title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryDark.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(999),
@@ -2189,11 +2679,20 @@ class _UpcomingCourseCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text('Faculty: ${course.facultyName}', style: const TextStyle(color: AppColors.ink700)),
+          Text(
+            'Faculty: ${course.facultyName}',
+            style: const TextStyle(color: AppColors.ink700),
+          ),
           const SizedBox(height: 4),
-          Text('Semester: ${course.course.semester}', style: const TextStyle(color: AppColors.ink500)),
+          Text(
+            'Semester: ${course.course.semester}',
+            style: const TextStyle(color: AppColors.ink500),
+          ),
           const SizedBox(height: 4),
-          Text('Credits: ${course.course.credits}', style: const TextStyle(color: AppColors.ink500)),
+          Text(
+            'Credits: ${course.course.credits}',
+            style: const TextStyle(color: AppColors.ink500),
+          ),
         ],
       ),
     );
@@ -2233,7 +2732,10 @@ class _RegistrationStatusCard extends StatelessWidget {
                 registration?.rejectionReason?.trim().isNotEmpty == true
                     ? 'Previous request was rejected: ${registration!.rejectionReason}'
                     : 'Previous request was rejected. You can submit a fresh registration.',
-                style: const TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  color: AppColors.danger,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
             const SizedBox(height: 14),
@@ -2242,20 +2744,28 @@ class _RegistrationStatusCard extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: registrationOpen ? onOpenRegistration : null,
                 icon: const Icon(Icons.event_available_outlined),
-                label: Text(registrationOpen ? 'Register for Next Semester' : 'Registration Closed'),
+                label: Text(
+                  registrationOpen
+                      ? 'Register for Next Semester'
+                      : 'Registration Closed',
+                ),
               ),
             ),
           ] else ...[
             Row(
               children: [
                 Icon(
-                  isApproved ? Icons.verified_outlined : Icons.hourglass_top_rounded,
+                  isApproved
+                      ? Icons.verified_outlined
+                      : Icons.hourglass_top_rounded,
                   color: isApproved ? AppColors.success : AppColors.warning,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    isApproved ? 'Registration Submitted / Approved' : 'Registration Submitted',
+                    isApproved
+                        ? 'Registration Submitted / Approved'
+                        : 'Registration Submitted',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink900,
@@ -2299,9 +2809,7 @@ class _AttendanceTab extends StatelessWidget {
           subtitle: 'View your attendance position and subject wise standing.',
         ),
         const SizedBox(height: 16),
-        const _SegmentedBanner(
-          leftLabel: 'Current Semester',
-        ),
+        const _SegmentedBanner(leftLabel: 'Current Semester'),
         const SizedBox(height: 16),
         _AttendanceRingCard(
           attendance: data.overallAttendance,
@@ -2349,7 +2857,9 @@ class _AttendanceTab extends StatelessWidget {
                   child: Text('No attendance activity found yet.'),
                 )
               else
-                ...data.attendanceRecords.take(4).map((record) => _AttendanceActivityRow(record: record)),
+                ...data.attendanceRecords
+                    .take(4)
+                    .map((record) => _AttendanceActivityRow(record: record)),
             ],
           ),
         ),
@@ -2372,50 +2882,29 @@ class _TasksTab extends StatelessWidget {
 
   Future<void> _openQuiz(BuildContext context, QuizDashboardItem quiz) async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => QuizAttemptScreen(quiz: quiz),
-      ),
+      MaterialPageRoute<void>(builder: (_) => QuizAttemptScreen(quiz: quiz)),
     );
   }
 
-  Future<void> _showQuizResult(BuildContext context, QuizDashboardItem quiz, QuizSubmissionModel submission) async {
-    final totalMarks = quiz.quiz.totalMarks;
-    final percentage = totalMarks <= 0 ? 0.0 : (submission.score / totalMarks) * 100;
-    await showModalBottomSheet<void>(
+  Future<void> _showQuizResult(
+    BuildContext context,
+    QuizDashboardItem quiz,
+    QuizSubmissionModel submission,
+  ) async {
+    await showQuizResultSheet(
       context: context,
-      showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(quiz.quiz.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 8),
-            Text('${quiz.courseCode} | ${quiz.courseTitle}', style: const TextStyle(color: AppColors.ink500)),
-            const SizedBox(height: 14),
-            _SurfaceCard(
-              child: Column(
-                children: [
-                  _InfoRow(label: 'Score', value: '${submission.score}/$totalMarks'),
-                  _InfoRow(label: 'Percentage', value: '${percentage.toStringAsFixed(0)}%'),
-                  _InfoRow(label: 'Submitted At', value: DateFormat('dd MMM, hh:mm a').format(submission.submittedAt.toDate())),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text('You have already submitted this quiz.', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      ),
+      quiz: quiz,
+      submission: submission,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final sorted = [...data.pendingTasks]..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    final sorted = [...data.pendingTasks]
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
     final featured = sorted.isNotEmpty ? sorted.first : null;
-    final quizzes = [...data.quizzes]..sort((a, b) => a.endTime.compareTo(b.endTime));
+    final quizzes = [...data.quizzes]
+      ..sort((a, b) => a.endTime.compareTo(b.endTime));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -2423,17 +2912,23 @@ class _TasksTab extends StatelessWidget {
         const _BrandHeader(
           eyebrow: 'ACADEMIC TASKS',
           title: 'Academic Tasks',
-          subtitle: 'Manage quizzes, lab assignments and milestones in one place.',
+          subtitle:
+              'Manage quizzes, lab assignments and milestones in one place.',
         ),
         const SizedBox(height: 16),
         _SurfaceCard(
-          child: _InfoRow(label: 'Pending tasks', value: '${data.pendingTasks.length}'),
+          child: _InfoRow(
+            label: 'Pending tasks',
+            value: '${data.pendingTasks.length}',
+          ),
         ),
         const SizedBox(height: 16),
         if (featured != null)
           _FeaturedTaskCard(task: featured)
         else
-          const _EmptyState(message: 'No pending assignments or quizzes right now.'),
+          const _EmptyState(
+            message: 'No pending assignments or quizzes right now.',
+          ),
         const SizedBox(height: 16),
         if (sorted.isNotEmpty)
           ...sorted.map(
@@ -2452,21 +2947,19 @@ class _TasksTab extends StatelessWidget {
         if (quizzes.isEmpty)
           const _EmptyState(message: 'No quizzes are active right now.')
         else
-          ...quizzes.map(
-            (quiz) {
-              final submission = _submissionForQuiz(quiz.quiz.id);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _QuizCard(
-                  quiz: quiz,
-                  submission: submission,
-                  onStart: submission == null
-                      ? () => _openQuiz(context, quiz)
-                      : () => _showQuizResult(context, quiz, submission),
-                ),
-              );
-            },
-          ),
+          ...quizzes.map((quiz) {
+            final submission = _submissionForQuiz(quiz.quiz.id);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _QuizCard(
+                quiz: quiz,
+                submission: submission,
+                onStart: submission == null
+                    ? () => _openQuiz(context, quiz)
+                    : () => _showQuizResult(context, quiz, submission),
+              ),
+            );
+          }),
         const SizedBox(height: 12),
         _SurfaceCard(
           child: Column(
@@ -2474,7 +2967,11 @@ class _TasksTab extends StatelessWidget {
             children: [
               const Text(
                 'Task Overview',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink900,
+                ),
               ),
               const SizedBox(height: 12),
               _OverviewBar(
@@ -2513,16 +3010,22 @@ class _NotificationsTabState extends State<_NotificationsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final items = [...widget.data.notifications]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final items = [...widget.data.notifications]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final query = _searchController.text.trim().toLowerCase();
     final filtered = items.where((item) {
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           item.notification.title.toLowerCase().contains(query) ||
           item.notification.body.toLowerCase().contains(query);
       final type = item.notification.type.toLowerCase();
       final matchesFilter = switch (_filter) {
         'all' => true,
-        'academic' => type == 'announcement' || type == 'assignment' || type == 'quiz' || type == 'material',
+        'academic' =>
+          type == 'announcement' ||
+              type == 'assignment' ||
+              type == 'quiz' ||
+              type == 'material',
         'assignment' => type == 'assignment',
         'general' => type == 'general' || type == 'announcement',
         _ => type == _filter,
@@ -2558,7 +3061,14 @@ class _NotificationsTabState extends State<_NotificationsTab> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Notices', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+                  const Text(
+                    'Notices',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primaryDark,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2587,13 +3097,29 @@ class _NotificationsTabState extends State<_NotificationsTab> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  _FilterPill(label: 'All Notices', selected: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
+                  _FilterPill(
+                    label: 'All Notices',
+                    selected: _filter == 'all',
+                    onTap: () => setState(() => _filter = 'all'),
+                  ),
                   const SizedBox(width: 8),
-                  _FilterPill(label: 'Academic', selected: _filter == 'academic', onTap: () => setState(() => _filter = 'academic')),
+                  _FilterPill(
+                    label: 'Academic',
+                    selected: _filter == 'academic',
+                    onTap: () => setState(() => _filter = 'academic'),
+                  ),
                   const SizedBox(width: 8),
-                  _FilterPill(label: 'Assignments', selected: _filter == 'assignment', onTap: () => setState(() => _filter = 'assignment')),
+                  _FilterPill(
+                    label: 'Assignments',
+                    selected: _filter == 'assignment',
+                    onTap: () => setState(() => _filter = 'assignment'),
+                  ),
                   const SizedBox(width: 8),
-                  _FilterPill(label: 'General', selected: _filter == 'general', onTap: () => setState(() => _filter = 'general')),
+                  _FilterPill(
+                    label: 'General',
+                    selected: _filter == 'general',
+                    onTap: () => setState(() => _filter = 'general'),
+                  ),
                 ],
               ),
             ),
@@ -2607,7 +3133,7 @@ class _NotificationsTabState extends State<_NotificationsTab> {
             if (yesterday.isNotEmpty) _buildSection('Yesterday', yesterday),
             if (earlier.isNotEmpty) _buildSection('Earlier', earlier),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ]
+          ],
         ],
       ),
     );
@@ -2617,26 +3143,30 @@ class _NotificationsTabState extends State<_NotificationsTab> {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            if (index == 0) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(title.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.ink500, letterSpacing: 1.2)),
-              );
-            }
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (index == 0) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _AnnouncementCard(notification: items[index - 1]),
+              child: Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink500,
+                  letterSpacing: 1.2,
+                ),
+              ),
             );
-          },
-          childCount: items.length + 1,
-        ),
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _AnnouncementCard(notification: items[index - 1]),
+          );
+        }, childCount: items.length + 1),
       ),
     );
   }
 }
-
 
 class _ProfileTab extends StatelessWidget {
   final StudentDashboardData data;
@@ -2677,21 +3207,36 @@ class _ProfileTab extends StatelessWidget {
             children: [
               const Text(
                 'Academic Credentials',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink900,
+                ),
               ),
               const SizedBox(height: 12),
-              _InfoRow(label: 'Enrollment No', value: student?.enrollmentNo ?? '-'),
+              _InfoRow(
+                label: 'Enrollment No',
+                value: student?.enrollmentNo ?? '-',
+              ),
               _InfoRow(label: 'Institutional Email', value: data.user.email),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        _SemesterCard(semester: semester, academicYear: 'Academic Year 2023-24'),
+        _SemesterCard(
+          semester: semester,
+          academicYear: 'Academic Year 2023-24',
+        ),
         const SizedBox(height: 16),
         _SurfaceCard(
           child: Column(
             children: [
-              _InfoRow(label: 'Section', value: student?.section.isNotEmpty == true ? student!.section : '-'),
+              _InfoRow(
+                label: 'Section',
+                value: student?.section.isNotEmpty == true
+                    ? student!.section
+                    : '-',
+              ),
               _InfoRow(label: 'Department', value: student?.department ?? '-'),
               _InfoRow(label: 'Logged-in Role', value: data.user.role),
             ],
@@ -2704,7 +3249,11 @@ class _ProfileTab extends StatelessWidget {
             children: [
               const Text(
                 'Active Courses',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink900),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.ink900,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -2714,7 +3263,9 @@ class _ProfileTab extends StatelessWidget {
               const SizedBox(height: 16),
               Center(
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                  ),
                   onPressed: onOpenCourses,
                   child: const Text('View Courses'),
                 ),
@@ -2727,7 +3278,8 @@ class _ProfileTab extends StatelessWidget {
           const _SectionHeader(
             eyebrow: 'REGISTRATION',
             title: 'Next Semester Registration',
-            subtitle: 'Submit or track your registration for upcoming academic terms.',
+            subtitle:
+                'Submit or track your registration for upcoming academic terms.',
           ),
           const SizedBox(height: 12),
           _RegistrationStatusCard(
@@ -2782,15 +3334,12 @@ class _HeroCard extends StatelessWidget {
           Text(
             'Hello, ${data.user.name}',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
-          Text(
-            data.user.email,
-            style: const TextStyle(color: Colors.white70),
-          ),
+          Text(data.user.email, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 14),
           Wrap(
             spacing: 8,
@@ -2798,7 +3347,11 @@ class _HeroCard extends StatelessWidget {
             children: [
               _Pill(text: student?.department ?? 'Student'),
               _Pill(text: 'Sem ${student?.semester ?? '-'}'),
-              _Pill(text: student?.section.isNotEmpty == true ? 'Section ${student!.section}' : 'Section -'),
+              _Pill(
+                text: student?.section.isNotEmpty == true
+                    ? 'Section ${student!.section}'
+                    : 'Section -',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -2812,10 +3365,7 @@ class _HeroCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _MiniStat(
-                  label: 'Next deadline',
-                  value: nextDeadline,
-                ),
+                child: _MiniStat(label: 'Next deadline', value: nextDeadline),
               ),
             ],
           ),
@@ -2848,15 +3398,12 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(color: AppColors.ink500),
-            ),
+            Text(title, style: const TextStyle(color: AppColors.ink500)),
           ],
         ),
       ),
@@ -2877,9 +3424,20 @@ class _AttendanceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(course.course.code, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+            Text(
+              course.course.code,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(course.course.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              course.course.title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 10),
             LinearProgressIndicator(
               value: (course.attendancePercentage / 100).clamp(0.0, 1.0),
@@ -2893,7 +3451,10 @@ class _AttendanceCard extends StatelessWidget {
               style: const TextStyle(color: AppColors.ink700),
             ),
             const SizedBox(height: 4),
-            Text('Faculty: ${course.facultyName}', style: const TextStyle(color: AppColors.ink500)),
+            Text(
+              'Faculty: ${course.facultyName}',
+              style: const TextStyle(color: AppColors.ink500),
+            ),
           ],
         ),
       ),
@@ -2905,10 +3466,7 @@ class _SectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _SectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
+  const _SectionTitle({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -2917,15 +3475,12 @@ class _SectionTitle extends StatelessWidget {
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 2),
-        Text(
-          subtitle,
-          style: const TextStyle(color: AppColors.ink500),
-        ),
+        Text(subtitle, style: const TextStyle(color: AppColors.ink500)),
       ],
     );
   }
@@ -2939,10 +3494,7 @@ class _CardShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: child,
-      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: child),
     );
   }
 }
@@ -2951,10 +3503,7 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -3023,9 +3572,8 @@ class _CourseCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         course.course.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -3057,10 +3605,7 @@ class _CourseCard extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: _TinyStat(
-                    label: 'Faculty',
-                    value: course.facultyName,
-                  ),
+                  child: _TinyStat(label: 'Faculty', value: course.facultyName),
                 ),
               ],
             ),
@@ -3075,10 +3620,7 @@ class _TinyStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _TinyStat({
-    required this.label,
-    required this.value,
-  });
+  const _TinyStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -3087,10 +3629,7 @@ class _TinyStat extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.ink500,
-            fontSize: 12,
-          ),
+          style: const TextStyle(color: AppColors.ink500, fontSize: 12),
         ),
         const SizedBox(height: 4),
         Text(
@@ -3124,15 +3663,15 @@ class _TaskCard extends StatelessWidget {
           backgroundColor: task.isOverdue
               ? AppColors.danger.withOpacity(0.12)
               : soon
-                  ? AppColors.warning.withOpacity(0.12)
-                  : AppColors.primary.withOpacity(0.12),
+              ? AppColors.warning.withOpacity(0.12)
+              : AppColors.primary.withOpacity(0.12),
           child: Icon(
             task.isOverdue ? Icons.warning_amber_outlined : Icons.edit_note,
             color: task.isOverdue
                 ? AppColors.danger
                 : soon
-                    ? AppColors.warning
-                    : AppColors.primary,
+                ? AppColors.warning
+                : AppColors.primary,
           ),
         ),
         title: Text(task.assignment.title),
@@ -3181,10 +3720,7 @@ class _NotificationCard extends StatelessWidget {
         ),
         trailing: notification.read
             ? null
-            : const CircleAvatar(
-                radius: 5,
-                backgroundColor: AppColors.primary,
-              ),
+            : const CircleAvatar(radius: 5, backgroundColor: AppColors.primary),
       ),
     );
   }
@@ -3194,10 +3730,7 @@ class _MiniStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MiniStat({
-    required this.label,
-    required this.value,
-  });
+  const _MiniStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -3290,9 +3823,9 @@ class _ErrorView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text(
@@ -3301,14 +3834,10 @@ class _ErrorView extends StatelessWidget {
               style: const TextStyle(color: AppColors.ink500),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onRetry,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
           ],
         ),
       ),
     );
   }
 }
-
